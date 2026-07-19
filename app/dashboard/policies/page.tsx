@@ -1,0 +1,2 @@
+import { BookingPoliciesForm } from "@/components/BookingPoliciesForm";
+export default function PoliciesPage(){return <div className="dashboard-page policies-page"><header className="page-header"><div><p className="eyebrow">RULES & AUTOMATION</p><h1>Booking policies</h1><p>Set notice windows, customer self-service rules, time off and notification preferences.</p></div></header><BookingPoliciesForm/></div>}

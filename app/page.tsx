@@ -27,9 +27,20 @@ const platformFeatures = [
 ];
 
 const plans = [
-  { name: "Starter", price: 39, note: "For solo barbers building consistency.", features: ["Branded booking page", "$10 deposits", "Client profiles", "Basic reports", "Product pickup"] },
-  { name: "Pro", price: 69, note: "For full-time barbers growing revenue.", features: ["Everything in Starter", "Smart repeat requests", "Advanced tax reports", "Automated reminders", "Priority support"], featured: true },
-  { name: "Studio", price: 119, note: "For shops with several chairs.", features: ["Everything in Pro", "Up to 5 barbers", "Shop-wide reporting", "Role permissions", "Shared product inventory"] },
+  {
+    name: "Complete",
+    code: "pro",
+    price: 69,
+    note: "Everything an independent barber needs to run a polished booking business.",
+    features: [
+      "Smart booking with $10 deposits",
+      "Client profiles and haircut memory",
+      "Multiple connected payment services",
+      "Product recommendations and pickup orders",
+      "Automated reminders and tax-ready reports",
+    ],
+    featured: true,
+  },
 ];
 
 export default function HomePage() {
@@ -97,17 +108,17 @@ export default function HomePage() {
       <section id="booking" className="booking-story section-block">
         <div className="booking-story-copy"><p className="eyebrow">A BETTER CUSTOMER EXPERIENCE</p><h2>Customers arrive understood—not under-explained.</h2><p>The guided booking engine asks only what matters, remembers returning clients and keeps the exact date, time, duration, deposit and remaining price visible throughout.</p><ul><li><UserRoundCheck size={18} /><span><b>Recognize returning customers</b><small>Reuse the previous haircut request unless something changed.</small></span></li><li><Clock3 size={18} /><span><b>Exact booking information</b><small>No confusing time windows or hidden duration.</small></span></li><li><Sparkles size={18} /><span><b>Relevant retail recommendations</b><small>Products match service, style and hair texture.</small></span></li><li><ShieldCheck size={18} /><span><b>Deposit clarity</b><small>$10 paid now, automatically removed from the amount due later.</small></span></li></ul><Link className="button" href="/b/marcus-studio">Try the live booking flow <ArrowRight size={17} /></Link></div>
         <div className="phone-stage">
-          <div className="phone-shell"><div className="phone-island" /><header><span>9:41</span><b>REED / Studio</b><span>•••</span></header><div className="phone-body"><small>STEP 3 OF 5</small><h3>Pick a clear date and time.</h3><div className="phone-days"><button><small>MON</small><b>20</b></button><button className="selected"><small>TUE</small><b>21</b></button><button><small>WED</small><b>22</b></button><button><small>THU</small><b>23</b></button></div><div className="phone-date"><b>Tuesday, July 21, 2026</b><small>45-minute appointment</small></div><div className="phone-times">{['9:00 AM','10:30 AM','12:00 PM','2:30 PM','4:00 PM','5:30 PM'].map((time, index)=><button className={index===3?'selected':''} key={time}>{time}</button>)}</div><div className="phone-summary"><span><CalendarCheck2 size={16} /> Tue, Jul 21 · 2:30 PM</span><b>$10 due now</b></div><button className="phone-continue">Continue →</button></div></div>
+          <div className="phone-shell"><div className="phone-island" /><header><span>9:41</span><b>REED / Studio</b><span>•••</span></header><div className="phone-body"><small>STEP 3 OF 5</small><h3>Select your appointment time.</h3><div className="phone-days"><button><small>MON</small><b>20</b><em>JUL</em></button><button className="selected"><small>TUE</small><b>21</b><em>JUL</em></button><button><small>WED</small><b>22</b><em>JUL</em></button><button><small>THU</small><b>23</b><em>JUL</em></button></div><div className="phone-date"><b>Tuesday, July 21, 2026</b><small>45-minute appointment</small></div><div className="phone-times">{['9:00 AM','10:30 AM','12:00 PM','2:30 PM','4:00 PM','5:30 PM'].map((time, index)=><button className={index===3?'selected':''} key={time}>{time}</button>)}</div><div className="phone-summary"><span><CalendarCheck2 size={16} /> Tue, Jul 21 · 2:30 PM</span><b>$10 due now</b></div><button className="phone-continue">Continue →</button></div></div>
         </div>
       </section>
 
       <section className="money-section section-block">
-        <div><p className="eyebrow">SUBSCRIPTION SOFTWARE, NOT A COMMISSION</p><h2>CutFlow earns from the software—not from every haircut.</h2></div><div className="money-comparison"><article><small>CUSTOMER PAYS</small><strong>$60</strong><p>Cut + Beard appointment</p></article><span>→</span><article className="highlight"><small>BARBER PAYMENT</small><strong>$60</strong><p>Less only the connected payment processor’s normal fee</p></article><span>+</span><article><small>CUTFLOW</small><strong>$69/mo</strong><p>Predictable Pro software subscription</p></article></div>
+        <div><p className="eyebrow">SUBSCRIPTION SOFTWARE, NOT A COMMISSION</p><h2>CutFlow earns from the software—not from every haircut.</h2></div><div className="money-comparison"><article><small>CUSTOMER PAYS</small><strong>$60</strong><p>Cut + Beard appointment</p></article><span>→</span><article className="highlight"><small>BARBER PAYMENT</small><strong>$60</strong><p>Less only the connected payment processor’s normal fee</p></article><span>+</span><article><small>CUTFLOW</small><strong>$69/mo</strong><p>Predictable Complete software subscription</p></article></div>
       </section>
 
       <section id="pricing" className="section-block pricing-section">
-        <div className="section-heading"><p className="eyebrow">PLANS THAT RESPECT THE CHAIR</p><div><h2>One monthly price. No CutFlow percentage.</h2><p>Start solo and move to a studio plan when the shop grows.</p></div></div>
-        <div className="pricing-grid">{plans.map((plan)=><article key={plan.name} className={plan.featured?"price-card featured":"price-card"}>{plan.featured&&<span className="popular">MOST POPULAR</span>}<p>{plan.name}</p><h3>${plan.price}<small>/month</small></h3><p>{plan.note}</p><ul>{plan.features.map(feature=><li key={feature}><Check size={15}/>{feature}</li>)}</ul><Link className={plan.featured?"button":"button secondary"} href={`/signup?plan=${plan.name.toLowerCase()}`}>Choose {plan.name}</Link></article>)}</div>
+        <div className="section-heading"><p className="eyebrow">PRICING THAT RESPECTS THE CHAIR</p><div><h2>One complete monthly plan. No CutFlow percentage.</h2><p>All current production features are included without confusing tiers or hidden transaction commissions.</p></div></div>
+        <div className="pricing-grid single-plan">{plans.map((plan)=><article key={plan.name} className={plan.featured?"price-card featured":"price-card"}>{plan.featured&&<span className="popular">MOST POPULAR</span>}<p>{plan.name}</p><h3>${plan.price}<small>/month</small></h3><p>{plan.note}</p><ul>{plan.features.map(feature=><li key={feature}><Check size={15}/>{feature}</li>)}</ul><Link className={plan.featured?"button":"button secondary"} href={`/signup?plan=${plan.code}`}>Choose {plan.name}</Link></article>)}</div>
         <p className="pricing-note">14-day free trial · Cancel anytime · Processor fees are separate · No CutFlow percentage added to client payments</p>
       </section>
 

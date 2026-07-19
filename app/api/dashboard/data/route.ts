@@ -51,6 +51,26 @@ async function readResource(resource: string) {
     } : null, demo: false };
   }
 
+  if (resource === "setup") {
+    const [{ count: servicesCount }, { count: availabilityCount }, { count: connectionsCount }, { data: subscription }] = await Promise.all([
+      supabase.from("services").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("active", true),
+      supabase.from("availability_rules").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("active", true),
+      supabase.from("payment_connections").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("status", "connected").eq("charges_enabled", true),
+      supabase.from("subscriptions").select("status,trial_ends_at,current_period_end").eq("owner_user_id", barber.owner_user_id).maybeSingle(),
+    ]);
+    const status = subscription?.status || "";
+    const subscriptionReady = status === "active" || (status === "trialing" && (!subscription?.trial_ends_at || new Date(subscription.trial_ends_at).getTime() > Date.now())) || (status === "past_due" && Boolean(subscription?.current_period_end) && new Date(subscription!.current_period_end!).getTime() > Date.now());
+    const steps = {
+      profile: Boolean(barber.display_name && barber.slug && barber.email),
+      media: Boolean(barber.profile_image_url && (barber.cover_image_url || barber.shop_image_url)),
+      services: Number(servicesCount || 0) > 0,
+      availability: Number(availabilityCount || 0) > 0,
+      payments: Number(connectionsCount || 0) > 0,
+      subscription: subscriptionReady,
+    };
+    return { data: { steps, ready: Object.values(steps).every(Boolean), published: Boolean(barber.storefront_published) }, demo: false };
+  }
+
   if (resource === "profile") {
     return { data: {
       id: barber.id,
@@ -68,19 +88,29 @@ async function readResource(resource: string) {
       acceptingBookings: barber.accepting_bookings,
       timezone: barber.timezone,
       depositCents: barber.booking_deposit_cents,
+      storefrontPublished: Boolean(barber.storefront_published),
+      setupCompletedAt: barber.setup_completed_at,
+      primaryPaymentProvider: barber.primary_payment_provider,
+      allowOnlineBalancePayment: barber.allow_online_balance_payment !== false,
+      allowCashPayment: barber.allow_cash_payment !== false,
+      profileImageUrl: barber.profile_image_url || "",
+      coverImageUrl: barber.cover_image_url || "",
+      shopImageUrl: barber.shop_image_url || "",
+      logoImageUrl: barber.logo_image_url || "",
+      galleryImageUrls: barber.gallery_image_urls || [],
     }, demo: false };
   }
 
   if (resource === "services") {
     const { data, error } = await supabase.from("services").select("*").eq("barber_id", barber.id).order("sort_order");
     if (error) throw error;
-    return { data: (data || []).map((row) => ({ id: row.id, name: row.name, description: row.description, durationMinutes: row.duration_minutes, priceCents: row.price_cents, category: row.category, active: row.active })), demo: false };
+    return { data: (data || []).map((row) => ({ id: row.id, name: row.name, description: row.description, durationMinutes: row.duration_minutes, priceCents: row.price_cents, category: row.category, active: row.active, imageUrl: row.image_url || "" })), demo: false };
   }
 
   if (resource === "products") {
     const { data, error } = await supabase.from("products").select("*").eq("barber_id", barber.id).order("sort_order");
     if (error) throw error;
-    return { data: (data || []).map((row) => ({ id: row.id, name: row.name, description: row.description, priceCents: row.price_cents, inventory: row.inventory_quantity, textureTags: row.texture_tags || [], serviceTags: row.service_tags || [], pickupOnly: row.pickup_only, active: row.active })), demo: false };
+    return { data: (data || []).map((row) => ({ id: row.id, name: row.name, description: row.description, priceCents: row.price_cents, inventory: row.inventory_quantity, textureTags: row.texture_tags || [], serviceTags: row.service_tags || [], pickupOnly: row.pickup_only, active: row.active, imageUrl: row.image_url || "" })), demo: false };
   }
 
   if (resource === "clients") {
@@ -198,7 +228,7 @@ export async function POST(request: Request) {
       const omitted = (existing || []).map((item) => item.id).filter((id) => !keptIds.includes(id));
       if (omitted.length) await supabase.from("services").update({ active: false }).eq("barber_id", barber.id).in("id", omitted);
       for (const [index, item] of items.entries()) {
-        const values = { barber_id: barber.id, name: item.name, description: item.description || "", duration_minutes: Number(item.durationMinutes) || 45, price_cents: Number(item.priceCents) || 0, category: item.category || "Haircut", active: item.active !== false, sort_order: index };
+        const values = { barber_id: barber.id, name: item.name, description: item.description || "", duration_minutes: Number(item.durationMinutes) || 45, price_cents: Number(item.priceCents) || 0, category: item.category || "Haircut", image_url: item.imageUrl || "", active: item.active !== false, sort_order: index };
         if (uuidPattern.test(item.id || "")) await supabase.from("services").update(values).eq("id", item.id).eq("barber_id", barber.id);
         else await supabase.from("services").insert(values);
       }
@@ -213,7 +243,7 @@ export async function POST(request: Request) {
       if (omitted.length) await supabase.from("products").update({ active: false }).eq("barber_id", barber.id).in("id", omitted);
       for (const [index, item] of items.entries()) {
         const validServiceTags = (item.serviceTags || []).filter((id: string) => uuidPattern.test(id));
-        const values = { barber_id: barber.id, name: item.name, description: item.description || "", price_cents: Number(item.priceCents) || 0, inventory_quantity: Number(item.inventory) || 0, texture_tags: item.textureTags || ["all"], service_tags: validServiceTags, pickup_only: true, active: item.active !== false, sort_order: index };
+        const values = { barber_id: barber.id, name: item.name, description: item.description || "", price_cents: Number(item.priceCents) || 0, inventory_quantity: Number(item.inventory) || 0, texture_tags: item.textureTags || ["all"], service_tags: validServiceTags, image_url: item.imageUrl || "", pickup_only: true, active: item.active !== false, sort_order: index };
         if (uuidPattern.test(item.id || "")) await supabase.from("products").update(values).eq("id", item.id).eq("barber_id", barber.id);
         else await supabase.from("products").insert(values);
       }
@@ -224,6 +254,22 @@ export async function POST(request: Request) {
       const item = body.item || {};
       const requestedSlug = String(item.slug ?? barber.slug).trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
       if (!requestedSlug || requestedSlug.length < 3) return NextResponse.json({ error: "Booking URL must contain at least 3 letters or numbers." }, { status: 400 });
+      let publish = item.storefrontPublished ?? barber.storefront_published;
+      let setupCompletedAt = barber.setup_completed_at;
+      if (publish) {
+        const [{ count: servicesCount }, { count: availabilityCount }, { count: connectionsCount }, { data: subscription }] = await Promise.all([
+          supabase.from("services").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("active", true),
+          supabase.from("availability_rules").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("active", true),
+          supabase.from("payment_connections").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("status", "connected").eq("charges_enabled", true),
+          supabase.from("subscriptions").select("status,trial_ends_at,current_period_end").eq("owner_user_id", barber.owner_user_id).maybeSingle(),
+        ]);
+        const subscriptionStatus = subscription?.status || "";
+        const subscriptionReady = subscriptionStatus === "active" || (subscriptionStatus === "trialing" && (!subscription?.trial_ends_at || new Date(subscription.trial_ends_at).getTime() > Date.now())) || (subscriptionStatus === "past_due" && Boolean(subscription?.current_period_end) && new Date(subscription!.current_period_end!).getTime() > Date.now());
+        if (!barber.profile_image_url || !(barber.cover_image_url || barber.shop_image_url) || !servicesCount || !availabilityCount || !connectionsCount || !subscriptionReady) {
+          return NextResponse.json({ error: "Complete photos, services, availability, subscription and a payment connection before publishing." }, { status: 400 });
+        }
+        setupCompletedAt = setupCompletedAt || new Date().toISOString();
+      }
       const { error } = await supabase.from("barber_profiles").update({
         slug: requestedSlug,
         display_name: item.displayName ?? barber.display_name,
@@ -236,7 +282,16 @@ export async function POST(request: Request) {
         timezone: item.timezone ?? barber.timezone,
         accent_color: item.accent ?? barber.accent_color,
         accepting_bookings: item.acceptingBookings ?? barber.accepting_bookings,
-        booking_deposit_cents: Number(item.depositCents ?? barber.booking_deposit_cents ?? 1000),
+        booking_deposit_cents: Math.max(50, Number(item.depositCents ?? barber.booking_deposit_cents ?? 1000)),
+        storefront_published: Boolean(publish),
+        setup_completed_at: setupCompletedAt,
+        allow_online_balance_payment: item.allowOnlineBalancePayment ?? barber.allow_online_balance_payment,
+        allow_cash_payment: item.allowCashPayment ?? barber.allow_cash_payment,
+        profile_image_url: item.profileImageUrl ?? barber.profile_image_url ?? "",
+        cover_image_url: item.coverImageUrl ?? barber.cover_image_url ?? "",
+        shop_image_url: item.shopImageUrl ?? barber.shop_image_url ?? "",
+        logo_image_url: item.logoImageUrl ?? barber.logo_image_url ?? "",
+        gallery_image_urls: Array.isArray(item.galleryImageUrls) ? item.galleryImageUrls.filter(Boolean).slice(0, 8) : (barber.gallery_image_urls || []),
       }).eq("id", barber.id);
       if (error) {
         if (error.code === "23505") return NextResponse.json({ error: "That booking URL is already in use." }, { status: 409 });
@@ -332,6 +387,8 @@ export async function POST(request: Request) {
         net_cents: item.type === "refund" ? -gross : gross,
         processor_fee_cents: 0,
         platform_fee_cents: 0,
+        provider: "manual",
+        payment_method_type: String(item.method || "cash").toLowerCase().replaceAll(" ", "_"),
         payment_method_label: item.method || "Cash",
         description: item.note || item.customerName || "Manual transaction",
       });

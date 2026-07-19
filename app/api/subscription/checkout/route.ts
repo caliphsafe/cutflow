@@ -3,9 +3,7 @@ import { appUrl, getStripe } from "@/lib/stripe";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const priceKeys: Record<string, string | undefined> = {
-  starter: process.env.STRIPE_PRICE_STARTER,
   pro: process.env.STRIPE_PRICE_PRO,
-  studio: process.env.STRIPE_PRICE_STUDIO,
 };
 
 export async function POST(request: Request) {

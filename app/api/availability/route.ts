@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { availability as demoAvailability, bookings as demoBookings, demoBarber, services as demoServices } from "@/lib/demo-data";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { localDateTimeParts, validateBookingWindow } from "@/lib/booking-time";
 
 function minutesFromTime(value: string) {
   const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
@@ -15,20 +16,6 @@ function timeFromMinutes(value: number) {
 
 function overlaps(start: number, end: number, busyStart: number, busyEnd: number) {
   return start < busyEnd && end > busyStart;
-}
-
-function localParts(value: string, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(new Date(value));
-  const get = (type: string) => parts.find((part) => part.type === type)?.value || "";
-  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
 }
 
 function buildSlots(startTime: string, endTime: string, duration: number, interval: number, buffer: number, busy: Array<[number, number]>) {
@@ -77,11 +64,12 @@ export async function GET(request: Request) {
     .maybeSingle();
   if (!barber || !barber.accepting_bookings) return NextResponse.json({ slots: [] });
 
-  const [{ data: service }, { data: rule }, { data: bookings }, { data: blocks }] = await Promise.all([
+  const [{ data: service }, { data: rule }, { data: bookings }, { data: blocks }, { data: policy }] = await Promise.all([
     admin.from("services").select("id,duration_minutes").eq("id", serviceId).eq("barber_id", barber.id).eq("active", true).maybeSingle(),
     admin.from("availability_rules").select("start_time,end_time,active").eq("barber_id", barber.id).eq("weekday", weekday).maybeSingle(),
     admin.from("bookings").select("appointment_time,duration_minutes,status,deposit_expires_at").eq("barber_id", barber.id).eq("appointment_date", date).in("status", ["pending_deposit", "confirmed", "checked_in"]),
     admin.from("blocked_times").select("starts_at,ends_at").eq("barber_id", barber.id).lt("starts_at", `${date}T23:59:59.999Z`).gt("ends_at", `${date}T00:00:00.000Z`),
+    admin.from("booking_policies").select("minimum_notice_minutes,max_advance_days,same_day_booking").eq("barber_id", barber.id).maybeSingle(),
   ]);
 
   if (!service || !rule?.active || !rule.start_time || !rule.end_time) return NextResponse.json({ slots: [] });
@@ -95,8 +83,8 @@ export async function GET(request: Request) {
     });
 
   for (const block of blocks || []) {
-    const start = localParts(block.starts_at, barber.timezone);
-    const end = localParts(block.ends_at, barber.timezone);
+    const start = localDateTimeParts(block.starts_at, barber.timezone);
+    const end = localDateTimeParts(block.ends_at, barber.timezone);
     if (start.date === date || end.date === date) {
       busy.push([
         start.date < date ? 0 : minutesFromTime(start.time),
@@ -105,7 +93,13 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({
-    slots: buildSlots(rule.start_time, rule.end_time, service.duration_minutes, barber.slot_interval_minutes, barber.buffer_minutes, busy),
-  });
+  const policyWindow = validateBookingWindow({ date, time: rule.start_time.slice(0, 5), timezone: barber.timezone, policy });
+  if (policyWindow.dayDifference < 0 || policyWindow.dayDifference > Number(policy?.max_advance_days ?? 60) || (policyWindow.dayDifference === 0 && policy?.same_day_booking === false)) {
+    return NextResponse.json({ slots: [] });
+  }
+
+  const slots = buildSlots(rule.start_time, rule.end_time, service.duration_minutes, barber.slot_interval_minutes, barber.buffer_minutes, busy)
+    .filter((slot) => validateBookingWindow({ date, time: slot, timezone: barber.timezone, policy }).valid);
+
+  return NextResponse.json({ slots });
 }
