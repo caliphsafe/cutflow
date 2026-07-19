@@ -1,116 +1,44 @@
-# CutFlow 43 Build — Supabase, GitHub, Vercel and Stripe Setup
+# CutFlow v2.2 Production Setup Guide
 
-This guide uses the browser dashboards. Terminal access is not required for the standard deployment.
+This guide uses the Supabase, GitHub, Vercel, Stripe, Square, PayPal, Resend and Twilio browser dashboards. Barbers never handle platform API keys. Only the CutFlow platform owner performs this setup.
 
 ---
 
-# Part 1 — Create the Supabase project
+# 1. Choose fresh install or upgrade
 
-## 1. Create the project
+## Fresh Supabase project
 
-1. Sign in to Supabase.
-2. Click **New project**.
-3. Choose the organization.
-4. Project name: `cutflow` or your preferred name.
-5. Create a strong database password and save it securely.
-6. Choose the region closest to the primary customers.
-7. Wait for the project to finish provisioning.
+Run these files in **Supabase → SQL Editor**, in this order:
 
-## 2. Install the database
+1. `supabase/schema.sql`
+2. `supabase/cron.sql`
+3. `supabase/verify-install.sql`
 
-1. Open **SQL Editor**.
-2. Click **New query**.
-3. In this downloaded project, open `supabase/schema.sql`.
-4. Copy the entire file.
-5. Paste it into the Supabase SQL Editor.
-6. Click **Run**.
-7. Confirm that the query completes without an error.
+## Existing CutFlow v1 database
 
-This creates the organizations, memberships, subscriptions, barber profiles, availability, clients, services, bookings, products, inventory reservations, transactions, notification queue, reporting view, Row Level Security policies, onboarding function and booking collision protection.
+Keep the existing data and run:
 
-## 3. Install the scheduled jobs
+1. `supabase/upgrade-v2.sql`
+2. `supabase/cron.sql`
+3. `supabase/verify-install.sql`
 
-1. Open a new SQL query.
-2. Open `supabase/cron.sql` from the downloaded project.
-3. Copy the entire file into Supabase.
-4. Click **Run**.
+Do not run `schema.sql` over an existing production database unless you have first backed it up and reviewed the migration.
 
-The jobs:
+The v2 SQL adds payment connections, payment sessions, customer portal tokens, webhook event logging, booking policies, notification preferences, media fields and the `cutflow-media` Storage bucket with barber-specific policies.
 
-- Release unpaid appointment/product holds after the 15-minute deposit window.
-- Queue 24-hour reminder records every 15 minutes.
+---
 
-## 4. Verify the installation
+# 2. Create or configure Supabase
 
-1. Open another SQL query.
-2. Run `supabase/verify-install.sql`.
-3. Confirm:
-   - Every table check is `true`.
-   - All three function checks are `true`.
-   - Both cron jobs appear as active.
-   - All listed private tables show Row Level Security enabled.
+## Project credentials
 
-## 5. Copy the project credentials
-
-Open **Project Settings → API** and copy:
+Open **Supabase → Project Settings → API** and copy:
 
 - Project URL
 - Publishable/anon key
 - Service-role key
 
-The service-role key is private. It must only be entered in Vercel’s encrypted server environment variables. Never paste it into a public file or a variable beginning with `NEXT_PUBLIC_`.
-
----
-
-# Part 2 — Upload CutFlow to GitHub
-
-## 1. Unzip the build
-
-Unzip `cutflow-43-build.zip`. The repository root is the folder containing:
-
-- `app`
-- `components`
-- `lib`
-- `public`
-- `supabase`
-- `package.json`
-
-Do not upload a parent folder that contains the project as one extra nested level.
-
-## 2. Create the repository
-
-1. Sign in to GitHub.
-2. Click **New repository**.
-3. Name it `cutflow-platform`.
-4. Choose **Private** for the first deployment.
-5. Do not initialize it with another README, `.gitignore` or license.
-6. Create the repository.
-
-## 3. Upload the files in the browser
-
-1. On the empty repository page, choose **uploading an existing file**.
-2. Drag every file and folder from inside the unzipped `cutflow-43-build` folder into GitHub.
-3. Confirm that `package.json` is visible at the repository root.
-4. Commit with the message `Initial CutFlow 43 Build`.
-
-The ZIP excludes `node_modules`, `.next` and private environment files.
-
----
-
-# Part 3 — Import the project into Vercel
-
-## 1. Create the Vercel project
-
-1. Sign in to Vercel.
-2. Click **Add New → Project**.
-3. Import the `cutflow-platform` GitHub repository.
-4. Framework Preset: **Next.js**.
-5. Root Directory: leave blank.
-6. Do not deploy until the environment variables are added.
-
-## 2. Add the Supabase variables
-
-In the Vercel project’s **Environment Variables**, add:
+These become:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
@@ -118,200 +46,126 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 ```
 
-Use the matching Supabase values.
+The service-role key belongs only in Vercel. Never put it in a browser-exposed variable or commit it to GitHub.
 
-Apply them to **Production**, **Preview** and **Development** unless you intentionally use separate Supabase projects.
+## Authentication URLs
 
-## 3. Add the first public URL variable
+Open **Authentication → URL Configuration**.
 
-Add:
+Set **Site URL** to the exact production URL:
 
 ```text
-NEXT_PUBLIC_APP_URL
+https://YOUR-CUTFLOW-DOMAIN.com
 ```
 
-For the first deployment, use a temporary value such as:
+Add redirect URLs:
 
 ```text
-https://cutflow-platform.vercel.app
-```
-
-If Vercel later assigns a different production URL, update this variable and redeploy.
-
-## 4. Deploy the first version
-
-Click **Deploy**.
-
-When deployment finishes:
-
-1. Open the generated Vercel URL.
-2. Confirm that the CutFlow landing page loads.
-3. Copy the exact production URL.
-4. Update `NEXT_PUBLIC_APP_URL` if needed.
-5. Redeploy the latest deployment after any environment-variable change.
-
----
-
-# Part 4 — Configure Supabase Authentication
-
-## 1. Set the production Site URL
-
-In Supabase, open **Authentication → URL Configuration**.
-
-Set **Site URL** to the exact Vercel production URL, for example:
-
-```text
-https://cutflow-platform.vercel.app
-```
-
-## 2. Add redirect URLs
-
-Add:
-
-```text
-https://YOUR-VERCEL-DOMAIN.vercel.app/**
-```
-
-For local development, optionally add:
-
-```text
+https://YOUR-CUTFLOW-DOMAIN.com/**
+https://YOUR-PROJECT.vercel.app/**
 http://localhost:3000/**
 ```
 
-After connecting a custom domain, also add:
+The application includes:
 
 ```text
-https://YOUR-CUSTOM-DOMAIN/**
+/auth/confirm
+/auth/callback
+/forgot-password
+/reset-password
 ```
 
-## 3. Configure email sign-up
+Keep email confirmation enabled for a public launch. Test sign-up, confirmation, password recovery and password reset before inviting barbers.
 
-Open **Authentication → Providers → Email**.
+## Storage
 
-For a public launch:
+`schema.sql` and `upgrade-v2.sql` create the public `cutflow-media` bucket and Row Level Security policies. A signed-in barber can upload only inside that barber's folder. The dashboard accepts JPG, PNG, WebP and AVIF files up to 8 MB.
 
-- Keep email sign-up enabled.
-- Keep email confirmation enabled.
-- Customize the confirmation email and sender before inviting customers.
-
-For a controlled internal test only, email confirmation can be temporarily disabled and then re-enabled before launch.
-
-## 4. Test the first barber account
-
-1. Open `/signup` on the Vercel site.
-2. Create the owner account.
-3. Confirm the email if required.
-4. Complete onboarding.
-5. Use a unique booking slug.
-6. Confirm that `/dashboard` opens.
-7. Open **Storefront** and then **Open live page**.
-
-Onboarding creates:
-
-- Organization
-- Owner membership
-- 14-day trial subscription record
-- Barber profile
-- Default weekly availability
-- Starter services
-- Public booking page
+After setup, open **Storage** and confirm that `cutflow-media` exists.
 
 ---
 
-# Part 5 — Create CutFlow subscription prices in Stripe
+# 3. Upload to GitHub
 
-CutFlow’s monthly subscription is separate from barber appointment payments.
+1. Unzip the CutFlow v2.2 ZIP.
+2. Open the folder containing `package.json`, `app`, `components`, `lib` and `supabase`.
+3. Create or open the GitHub repository.
+4. Upload the **contents inside** the project folder, not an extra parent folder.
+5. Confirm `package.json` is at the repository root.
+6. Commit the files.
 
-## 1. Create the products
+The ZIP excludes `.env`, `node_modules`, `.next` and TypeScript build caches.
 
-In the CutFlow platform Stripe account, create three recurring monthly products:
+---
 
-- **CutFlow Starter** — `$39/month`
-- **CutFlow Pro** — `$69/month`
-- **CutFlow Studio** — `$119/month`
+# 4. Deploy to Vercel
 
-Create one monthly recurring price for each product.
+1. In Vercel, choose **Add New → Project**.
+2. Import the GitHub repository.
+3. Framework Preset: **Next.js**.
+4. Root Directory: leave blank.
+5. Add the required environment variables below.
+6. Deploy.
 
-## 2. Copy the recurring price IDs
+The project pins Node.js 22 in `package.json` and uses the public npm registry.
 
-Each price ID begins with `price_`.
-
-Add these Vercel variables:
+## Core Vercel variables
 
 ```text
-STRIPE_PRICE_STARTER=price_...
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_APP_URL=https://YOUR-CUTFLOW-DOMAIN.com
+PAYMENT_TOKEN_ENCRYPTION_KEY=
+CRON_SECRET=
+PLATFORM_ADMIN_EMAIL=
+```
+
+### `PAYMENT_TOKEN_ENCRYPTION_KEY`
+
+Use a unique cryptographically random key that is exactly 32 bytes, represented as either:
+
+- 64 hexadecimal characters, or
+- valid base64 for 32 bytes
+
+It encrypts seller OAuth tokens before they are written to Supabase. Do not reuse a password or publish this value.
+
+### `CRON_SECRET`
+
+Use a long URL-safe random value. Add the exact same value later in `supabase/notification-worker.sql`.
+
+Every Vercel environment-variable change requires a new deployment.
+
+---
+
+# 5. Configure CutFlow subscription billing in Stripe
+
+Appointment payments belong to barbers. CutFlow's monthly subscription belongs to the CutFlow platform Stripe account.
+
+## Create recurring prices
+
+Create one monthly recurring price:
+
+- CutFlow Complete — `$69/month`
+
+Add:
+
+```text
+STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PRICE_PRO=price_...
-STRIPE_PRICE_STUDIO=price_...
 ```
 
-## 3. Add platform Stripe keys
+The application creates a 14-day trial through Stripe Checkout and enforces subscription/trial status on protected dashboard routes.
 
-From the same platform Stripe account, add:
+## Platform webhook
+
+Create a Stripe webhook endpoint:
 
 ```text
-STRIPE_SECRET_KEY=sk_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...
+https://YOUR-CUTFLOW-DOMAIN.com/api/stripe/webhook
 ```
 
-Start with test-mode keys. Use live-mode keys only after the entire test checklist passes.
-
----
-
-# Part 6 — Enable Stripe Connect for barbers
-
-CutFlow uses Stripe Connect Standard so each barber connects an account and customer appointment payments are created directly on that account.
-
-## 1. Activate Connect
-
-In Stripe, open the Connect section and complete the platform profile if Stripe requests it.
-
-## 2. Enable OAuth for Standard accounts
-
-In the Connect integration settings:
-
-1. Enable OAuth.
-2. Copy the platform’s Connect client ID. It begins with `ca_`.
-3. Add the production redirect URI:
-
-```text
-https://YOUR-DOMAIN/api/stripe/connect/callback
-```
-
-4. Add the matching preview/custom-domain callback only when it is intentionally supported.
-
-Add this Vercel variable:
-
-```text
-STRIPE_CONNECT_CLIENT_ID=ca_...
-```
-
-## 3. Test the connected-account flow
-
-1. Redeploy after adding the variable.
-2. Sign in to CutFlow.
-3. Open **Dashboard → Settings → Payments**.
-4. Click **Connect Stripe**.
-5. Complete Stripe’s connected-account onboarding.
-6. Return to CutFlow.
-7. Confirm the settings page displays **Connected**.
-
----
-
-# Part 7 — Create the Stripe webhooks
-
-Both webhook endpoints use this CutFlow URL:
-
-```text
-https://YOUR-DOMAIN/api/stripe/webhook
-```
-
-CutFlow keeps two signing secrets because platform events and connected-account events are configured separately.
-
-## 1. Platform-account webhook
-
-Create a webhook for events on the CutFlow platform account.
-
-Select:
+Select platform events:
 
 ```text
 checkout.session.completed
@@ -319,267 +173,296 @@ customer.subscription.updated
 customer.subscription.deleted
 ```
 
-Copy its signing secret and add:
+Copy its signing secret into:
 
 ```text
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
-## 2. Connected-account webhook
+Enable the Stripe customer billing portal in Stripe Billing settings.
 
-Create a second webhook and set its event source/scope to **Connected accounts**.
+---
+
+# 6. Configure Stripe Connect for barbers
+
+Stripe is the recommended first provider because it can offer cards, Apple Pay, Google Pay and Cash App Pay when those methods are enabled and eligible.
+
+## Platform setup
+
+1. Open Stripe Connect and complete the CutFlow platform profile.
+2. Enable Standard account OAuth.
+3. Add this redirect URI:
+
+```text
+https://YOUR-CUTFLOW-DOMAIN.com/api/payments/connect/stripe/callback
+```
+
+4. Copy the Connect client ID beginning with `ca_`.
+5. Add:
+
+```text
+STRIPE_CONNECT_CLIENT_ID=ca_...
+```
+
+## Connected-account webhook
+
+Create a webhook for **events on connected accounts** using the same endpoint:
+
+```text
+https://YOUR-CUTFLOW-DOMAIN.com/api/stripe/webhook
+```
 
 Select:
 
 ```text
 checkout.session.completed
+account.updated
+account.application.deauthorized
 charge.refunded
 ```
 
-Copy its different signing secret and add:
+Copy its separate signing secret into:
 
 ```text
 STRIPE_CONNECT_WEBHOOK_SECRET=whsec_...
 ```
 
-## 3. Redeploy
+## Enable payment methods
 
-After adding or changing either secret, redeploy the latest Vercel deployment.
+In Stripe's payment-method settings for connected accounts, enable the methods CutFlow should offer, including Cash App Pay where available. Stripe decides eligibility based on the account, customer, currency and other provider rules.
 
-## 4. What the webhooks do
+## Barber experience
 
-- Confirm a pending appointment after the $10 deposit succeeds.
-- Preserve the deposit as its own transaction record.
-- Record the processor fee and net amount returned for the connected account.
-- Mark the final balance paid when balance checkout succeeds.
-- Create queued booking-confirmation and barber-alert records.
-- Record connected-account refunds in the CutFlow ledger.
-- Update the CutFlow software subscription status.
+The barber uses **Dashboard → Connections → Connect Stripe**, signs into Stripe or creates an account, completes Stripe's hosted identity/bank steps, and returns to CutFlow. No API key is shown to the barber.
 
 ---
 
-# Part 8 — Configure the Stripe Billing Portal
+# 7. Configure Square OAuth
 
-In Stripe Billing settings:
+Square support lets a barber connect an existing Square seller account by signing in.
 
-1. Open the Customer Portal configuration.
-2. Enable the actions the barber may use, such as updating payment methods, viewing invoices and cancelling/changing the subscription.
-3. Save the portal configuration.
+## Create the Square application
 
-CutFlow’s **Dashboard → Subscription → Billing portal** button uses that configuration.
-
----
-
-# Part 9 — Complete the barber workspace
-
-Sign in and complete these pages in order.
-
-## 1. Storefront
-
-Open **Dashboard → Storefront**.
-
-Set:
-
-- Barber display name
-- Shop/studio name
-- Booking URL
-- Headline
-- Bio
-- Accent color
-- Accepting-bookings status
-
-Save and open the live page.
-
-## 2. Services
-
-Open **Dashboard → Services**.
-
-For each service, confirm:
-
-- Name
-- Description
-- Category
-- Price
-- Duration
-- Active status
-
-Duration controls which times can be shown as available.
-
-## 3. Products
-
-Open **Dashboard → Products**.
-
-For every pickup product, add:
-
-- Name and description
-- Price
-- Inventory quantity
-- Hair-texture tags
-- Related service tags
-- Active status
-
-Texture and service tags power customer recommendations during booking.
-
-## 4. Availability
-
-Open **Dashboard → Settings → Availability**.
-
-Set each working day’s opening and closing time. Closed days should be unchecked.
-
-## 5. Payments
-
-Connect or update the barber’s Stripe account.
-
-The booking deposit is fixed at `$10.00` and is automatically subtracted from the customer’s remaining appointment/product total.
-
----
-
-# Part 10 — Test the complete customer flow
-
-Use Stripe test mode for the first full test.
-
-## 1. New customer booking
-
-1. Open `/b/YOUR-SLUG` in a private/incognito window.
-2. Start a booking.
-3. Enter a new client email and phone.
-4. Choose a service.
-5. Confirm that only available dates/times appear.
-6. Complete the detailed haircut request.
-7. Add a suggested pickup product.
-8. Review the exact date, time, $10 deposit and remaining balance.
-9. Continue to Stripe Checkout.
-10. Complete the test payment using a Stripe test card.
-
-Confirm in CutFlow:
-
-- Booking changes from Pending deposit to Confirmed.
-- Client is created automatically.
-- Hair texture and request are saved.
-- Product reservation appears through reduced inventory.
-- Deposit transaction appears in Payments and Reports.
-- Remaining balance is correct.
-
-## 2. Collision test
-
-Before paying a second test booking, try to choose the same barber/time from another browser session.
-
-Confirm that CutFlow rejects the overlap or removes the time from availability.
-
-## 3. Returning customer test
-
-Start another booking using the same email and phone.
-
-Confirm that CutFlow:
-
-- Recognizes the returning client.
-- Offers the last haircut request.
-- Allows the request to be repeated or changed.
-- Uses the saved hair texture for product recommendations.
-
-## 4. Abandoned checkout test
-
-1. Start a booking.
-2. Reach Stripe Checkout but do not pay.
-3. Wait beyond the 15-minute hold.
-4. Confirm the cron job changes the hold to Cancelled and restores reserved product inventory.
-
-## 5. Balance and refund test
-
-1. Open the confirmed booking in the dashboard.
-2. Use the balance-payment workflow when ready.
-3. Confirm the transaction and paid status.
-4. Issue a controlled test refund in the connected Stripe account.
-5. Confirm a refund entry appears in the CutFlow ledger after the webhook is delivered.
-
----
-
-# Part 11 — Connect a notification provider
-
-CutFlow already queues notification records, but this build does not expose any provider credentials or make a vendor choice for you.
-
-Before relying on automatic messages, add a small server worker that:
-
-1. Reads `notification_log` rows where `status = 'queued'`.
-2. Sends the matching template through the chosen provider.
-3. Updates the row to `sent`, `delivered` or `failed`.
-4. Stores the provider message ID.
-
-The included queue creates:
-
-- `booking_confirmation`
-- `new_booking_alert`
-- `customer_reminder_24h`
-
-The recommended production configuration is email confirmation plus optional SMS reminders after the barber has collected proper customer consent.
-
----
-
-# Part 12 — Connect a custom domain
-
-In Vercel:
-
-1. Open **Project Settings → Domains**.
-2. Add the domain or subdomain.
-3. Follow the displayed DNS instructions.
-4. Wait for Vercel to confirm the domain.
-5. Change `NEXT_PUBLIC_APP_URL` to the final custom domain.
-6. Redeploy.
-
-Then update:
-
-- Supabase Site URL
-- Supabase redirect URLs
-- Stripe Connect OAuth redirect URI
-- Stripe platform webhook URL
-- Stripe connected-account webhook URL
-
-Do not remove the old Vercel URL from Supabase until production sign-in and OAuth work correctly on the custom domain.
-
----
-
-# Part 13 — Environment variable reference
+1. Open the Square Developer Dashboard.
+2. Create an application for CutFlow.
+3. Add the OAuth redirect URL:
 
 ```text
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_CONNECT_WEBHOOK_SECRET=
-STRIPE_CONNECT_CLIENT_ID=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-
-STRIPE_PRICE_STARTER=
-STRIPE_PRICE_PRO=
-STRIPE_PRICE_STUDIO=
-
-NEXT_PUBLIC_APP_URL=https://YOUR-DOMAIN
-PLATFORM_ADMIN_EMAIL=YOUR-ADMIN-EMAIL
+https://YOUR-CUTFLOW-DOMAIN.com/api/payments/connect/square/callback
 ```
 
-All Vercel environment-variable changes require a new deployment before the running application receives them.
+4. Add the application's ID and secret to Vercel:
+
+```text
+SQUARE_ENVIRONMENT=sandbox
+SQUARE_APPLICATION_ID=
+SQUARE_APPLICATION_SECRET=
+SQUARE_API_VERSION=2026-07-15
+```
+
+Use sandbox while testing. Change `SQUARE_ENVIRONMENT` to `production` only after end-to-end tests pass.
+
+## Square webhook
+
+Create a webhook subscription with this exact notification URL:
+
+```text
+https://YOUR-CUTFLOW-DOMAIN.com/api/webhooks/square
+```
+
+Subscribe to:
+
+```text
+payment.created
+payment.updated
+oauth.authorization.revoked
+bank_account.created
+bank_account.verified
+bank_account.disabled
+```
+
+Add:
+
+```text
+SQUARE_WEBHOOK_SIGNATURE_KEY=
+SQUARE_WEBHOOK_URL=https://YOUR-CUTFLOW-DOMAIN.com/api/webhooks/square
+```
+
+`SQUARE_WEBHOOK_URL` must exactly match the URL registered in Square because it is part of signature verification.
+
+## Barber experience
+
+The barber presses **Connect Square**, signs into Square, selects/authorizes the business, and returns to CutFlow. CutFlow securely stores encrypted OAuth tokens and selects an active Square location.
 
 ---
 
-# Part 14 — Before accepting real appointments
+# 8. Configure PayPal and Venmo
 
-Complete `LAUNCH_CHECKLIST.md`.
+PayPal/Venmo is built using PayPal's multiparty platform model. Sandbox can be configured during development, but live multiparty seller onboarding and live Venmo availability can require PayPal partner approval and eligibility.
 
-At minimum, verify:
+## Platform credentials
 
-- Real service prices and durations
-- Real availability
-- Real address/contact information
-- Connected live Stripe account
-- Both live webhook secrets
-- Live subscription prices
-- Mobile booking test
-- Deposit/cancellation/no-show policy
-- Privacy policy for saved client information
-- Notification delivery provider
-- Accountant review of reports and tax categories
-- MFA for owner/admin accounts
+Create the PayPal developer application and add:
 
-CutFlow organizes transaction records and provides exportable summaries. It does not replace legal, tax or accounting advice.
+```text
+PAYPAL_ENVIRONMENT=sandbox
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_PARTNER_MERCHANT_ID=
+PAYPAL_PARTNER_ATTRIBUTION_ID=
+```
+
+Set the seller-onboarding return URL to:
+
+```text
+https://YOUR-CUTFLOW-DOMAIN.com/api/payments/connect/paypal/callback
+```
+
+## PayPal webhook
+
+Create a webhook endpoint:
+
+```text
+https://YOUR-CUTFLOW-DOMAIN.com/api/webhooks/paypal
+```
+
+At minimum, subscribe to:
+
+```text
+PAYMENT.CAPTURE.COMPLETED
+MERCHANT.ONBOARDING.COMPLETED
+MERCHANT.PARTNER-CONSENT.REVOKED
+CUSTOMER.MERCHANT-INTEGRATION.CAPABILITY-UPDATED
+```
+
+Add the webhook ID:
+
+```text
+PAYPAL_WEBHOOK_ID=
+```
+
+The PayPal webhook signature is verified server-side before CutFlow records the transaction or confirms a booking.
+
+## Barber experience
+
+The barber selects **Connect PayPal & Venmo**, completes PayPal-hosted seller onboarding, and returns to CutFlow. The connection becomes available to customers only after the seller is payment-ready.
+
+---
+
+# 9. Configure transactional email
+
+Create a Resend account and verify the sending domain.
+
+Add:
+
+```text
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=CutFlow <bookings@YOUR-DOMAIN.com>
+```
+
+When Resend is configured, a verified deposit webhook immediately sends the booking's queued confirmation and barber alert. The scheduled worker handles reminders and retries.
+
+---
+
+# 10. Configure optional SMS
+
+Create a Twilio account and add:
+
+```text
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
+```
+
+SMS remains off by default in barber notification settings. Enable SMS only after consent language, opt-out handling and applicable messaging registration are completed.
+
+---
+
+# 11. Activate notification reminders without Vercel Pro
+
+CutFlow includes `supabase/notification-worker.sql`. It uses Supabase Cron and `pg_net` to call the secure Vercel notification route every five minutes.
+
+1. Confirm the production site is deployed.
+2. Confirm `CRON_SECRET` exists in Vercel.
+3. Open `supabase/notification-worker.sql`.
+4. Replace:
+
+```text
+https://YOUR-CUTFLOW-DOMAIN.com
+REPLACE_WITH_THE_EXACT_CRON_SECRET_FROM_VERCEL
+```
+
+5. Copy the entire edited file into Supabase SQL Editor.
+6. Click **Run**.
+7. Inspect `cron.job` and `net._http_response` if delivery troubleshooting is needed.
+
+The optional `vercel-pro.json` contains the equivalent five-minute Vercel Cron configuration. Only rename it to `vercel.json` when using a Vercel plan that allows that schedule. Do not enable both workers at once.
+
+---
+
+# 12. Complete the first barber workspace
+
+After signing up and confirming the email:
+
+1. Finish `/onboarding`.
+2. Open **Photos & media** and add:
+   - barber portrait
+   - cover or shop photo
+   - optional logo
+   - gallery images
+3. Open **Services** and add service photos, prices and durations.
+4. Open **Products** and add photos, inventory and recommendation tags.
+5. Open **Policies** and set booking notice, cancellation and rescheduling rules.
+6. Open **Connections** and connect at least one payment-ready provider.
+7. Open **Subscription** and start the appropriate CutFlow plan/trial.
+8. Open **Storefront**, preview it, then publish.
+
+CutFlow's publication gate requires the essential profile, service, availability, media, payment and subscription setup so customers do not see an unfinished page.
+
+---
+
+# 13. End-to-end test before live mode
+
+Use provider test/sandbox environments and complete all of these:
+
+1. Create a new barber account.
+2. Confirm the email.
+3. Recover and reset the password.
+4. Upload every media type and verify it appears publicly.
+5. Connect Stripe and/or Square through sign-in.
+6. Publish the storefront.
+7. Book as a new customer.
+8. Confirm date formatting and exact appointment time.
+9. Submit a detailed haircut request.
+10. Add a recommended pickup product.
+11. Pay the deposit.
+12. Confirm the signed webhook changes the booking to `confirmed`.
+13. Confirm transaction, customer and product reservation records appear.
+14. Open the private appointment link.
+15. Download the calendar event and print the receipt.
+16. Test rescheduling, cancellation and remaining-balance payment.
+17. Test an abandoned checkout and confirm the hold releases.
+18. Test a duplicate-time race and confirm the second booking is rejected.
+19. Test email delivery, reminder delivery and failure retries.
+20. Export monthly, quarterly and yearly CSV files.
+
+Only replace sandbox/test credentials with live credentials after this checklist succeeds.
+
+---
+
+# 14. Production responsibilities outside the code
+
+Before selling CutFlow publicly, complete:
+
+- Platform Terms of Service
+- Privacy Policy
+- Barber agreement
+- Deposit, cancellation, no-show, refund and dispute language
+- SMS consent and opt-out compliance
+- Payment-provider platform approvals
+- Sales-tax and bookkeeping review
+- Error monitoring and operational alerts
+- Database backups and recovery testing
+- Support email and escalation process
+
+CutFlow organizes transaction data but is not a substitute for licensed tax, legal or accounting advice.

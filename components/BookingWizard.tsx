@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
+  WalletCards,
   Info,
   MapPin,
   PackageCheck,
@@ -122,7 +123,7 @@ export function BookingWizard({
   const [selectedTime, setSelectedTime] = useState("");
   const [request, setRequest] = useState<HaircutRequest>(blankRequest);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
+  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", smsConsent: false });
   const [existingCustomerId, setExistingCustomerId] = useState<string | null>(null);
   const [savedRequest, setSavedRequest] = useState<HaircutRequest | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -137,7 +138,9 @@ export function BookingWizard({
   const selectedProductData = products.filter((product) => selectedProducts.includes(product.id));
   const productTotal = selectedProductData.reduce((sum, product) => sum + product.priceCents, 0);
   const total = (service?.priceCents || 0) + productTotal;
-  const deposit = 1000;
+  const deposit = barber.depositCents ?? 1000;
+  const paymentOptions = barber.paymentOptions?.length ? barber.paymentOptions : [{ provider: "stripe" as const, label: "Card or digital wallet", methods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"] }];
+  const [paymentProvider, setPaymentProvider] = useState<"stripe" | "square" | "paypal">((barber.primaryPaymentProvider || paymentOptions[0]?.provider || "stripe") as "stripe" | "square" | "paypal");
   const dueAtShop = Math.max(0, total - deposit);
 
   const recommendations = products.filter((product) =>
@@ -191,7 +194,7 @@ export function BookingWizard({
       }
       setExistingCustomerId(data.client.id);
       setSavedRequest({ ...blankRequest, ...(data.client.lastRequest || {}) });
-      setCustomer({ name: data.client.name, email: data.client.email, phone: data.client.phone });
+      setCustomer((current) => ({ ...current, name: data.client.name, email: data.client.email, phone: data.client.phone }));
     } finally {
       setLookupLoading(false);
     }
@@ -233,6 +236,7 @@ export function BookingWizard({
           customer,
           haircutRequest: request,
           productIds: selectedProducts,
+          paymentProvider,
         }),
       });
       const data = await response.json();
@@ -265,6 +269,7 @@ export function BookingWizard({
                 <label><span>Full name</span><input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder="Your full name" /></label>
                 <label><span>Mobile number</span><input value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} onBlur={identifyReturningCustomer} placeholder="(508) 555-0123" inputMode="tel" /></label>
                 <label className="full"><span>Email</span><input value={customer.email} onChange={(event) => setCustomer({ ...customer, email: event.target.value })} onBlur={identifyReturningCustomer} placeholder="you@example.com" type="email" /></label>
+                <label className="full consent-check"><input type="checkbox" checked={customer.smsConsent} onChange={(event) => setCustomer({ ...customer, smsConsent: event.target.checked })} /><span><b>Text me appointment updates</b><small>Booking confirmations and reminders only. Message rates may apply.</small></span></label>
               </div>
 
               {lookupLoading && <div className="privacy-note"><Clock3 size={16} /><span>Checking for your saved chair profile…</span></div>}
@@ -284,12 +289,13 @@ export function BookingWizard({
             <div className="booking-step">
               <div className="step-heading">
                 <span className="step-icon"><Scissors size={20} /></span>
-                <div><small>STEP 2 OF 5</small><h2>Choose the appointment.</h2><p>Duration, deposit and remaining balance stay visible before you confirm.</p></div>
+                <div><small>STEP 2 OF 5</small><h2>Select a service.</h2><p>Review the full price and appointment length before choosing a time.</p></div>
               </div>
               <div className="service-choice-grid">
                 {services.filter((item) => item.active).map((item) => (
                   <button key={item.id} className={serviceId === item.id ? "service-choice selected" : "service-choice"} onClick={() => setServiceId(item.id)}>
                     <span className="choice-check">{serviceId === item.id && <Check size={14} />}</span>
+                    {item.imageUrl && <span className="service-choice-photo"><img src={item.imageUrl} alt="" /></span>}
                     <div><small>{item.category}</small><b>{item.name}</b><p>{item.description}</p></div>
                     <footer><span><Clock3 size={14} /> {item.durationMinutes} min</span><strong>{money(item.priceCents)}</strong></footer>
                   </button>
@@ -302,17 +308,25 @@ export function BookingWizard({
             <div className="booking-step">
               <div className="step-heading">
                 <span className="step-icon"><CalendarDays size={20} /></span>
-                <div><small>STEP 3 OF 5</small><h2>Pick a clear date and time.</h2><p>No vague windows. Your exact start time and appointment length are confirmed.</p></div>
+                <div><small>STEP 3 OF 5</small><h2>Select your appointment time.</h2><p>Choose an available date, then select the exact start time that works best for you.</p></div>
               </div>
-              <div className="day-scroller">
+              <div className="date-selector-header"><span>Available dates</span><small>Times are shown in {barber.city || "the barber’s local time"}</small></div>
+              <div className="day-scroller" role="list" aria-label="Available appointment dates">
                 {days.map((date) => {
                   const selected = selectedDate && toDateKey(selectedDate) === toDateKey(date);
-                  return <button key={toDateKey(date)} className={selected ? "selected" : ""} onClick={() => setSelectedDate(date)}><small>{new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date)}</small><b>{date.getDate()}</b><span>{new Intl.DateTimeFormat("en-US", { month: "short" }).format(date)}</span></button>;
+                  const weekday = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date);
+                  const month = new Intl.DateTimeFormat("en-US", { month: "short" }).format(date);
+                  return <button type="button" key={toDateKey(date)} className={selected ? "day-card selected" : "day-card"} aria-pressed={Boolean(selected)} aria-label={formatLongDay(date)} onClick={() => setSelectedDate(date)}>
+                    <span className="day-card-weekday">{weekday}</span>
+                    <span className="day-card-number">{date.getDate()}</span>
+                    <span className="day-card-month">{month}</span>
+                    {selected && <span className="day-card-check"><Check size={13}/></span>}
+                  </button>;
                 })}
               </div>
               {selectedDate ? (
                 <div className="time-panel">
-                  <header><div><b>{formatLongDay(selectedDate)}</b><span>{service?.durationMinutes || 45}-minute appointment</span></div><span>{slotsLoading ? "Checking…" : `${slots.length} openings`}</span></header>
+                  <header><div className="selected-date-heading"><span className="selected-date-calendar"><small>{new Intl.DateTimeFormat("en-US", { month: "short" }).format(selectedDate)}</small><b>{selectedDate.getDate()}</b></span><span><b>{new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(selectedDate)}</b><small>{service?.durationMinutes || 45}-minute appointment</small></span></div><span className="opening-count">{slotsLoading ? "Checking availability…" : `${slots.length} ${slots.length === 1 ? "time" : "times"} available`}</span></header>
                   {slotsLoading ? (
                     <div className="empty-selection"><Clock3 size={24} /><p>Checking live availability…</p></div>
                   ) : slots.length ? (
@@ -323,7 +337,7 @@ export function BookingWizard({
                     <div className="empty-selection"><CalendarDays size={24} /><p>No openings remain on this date. Choose another day.</p></div>
                   )}
                 </div>
-              ) : <div className="empty-selection"><CalendarDays size={24} /><p>Select a date to see exact openings.</p></div>}
+              ) : <div className="empty-selection date-empty"><CalendarDays size={24} /><div><b>Choose an available date</b><p>Appointment times will appear here after you select a date.</p></div></div>}
             </div>
           )}
 
@@ -331,7 +345,7 @@ export function BookingWizard({
             <div className="booking-step">
               <div className="step-heading">
                 <span className="step-icon"><Sparkles size={20} /></span>
-                <div><small>STEP 4 OF 5</small><h2>Describe the cut once.</h2><p>These details become part of your profile and can be repeated next time unless you change them.</p></div>
+                <div><small>STEP 4 OF 5</small><h2>Tell your barber what you need.</h2><p>Your preferences are saved securely so returning appointments are faster to book.</p></div>
               </div>
 
               {existingCustomerId && !request.repeatLastRequest && (
@@ -359,7 +373,7 @@ export function BookingWizard({
             <div className="booking-step">
               <div className="step-heading">
                 <span className="step-icon"><PackageCheck size={20} /></span>
-                <div><small>STEP 5 OF 5</small><h2>Finish the appointment.</h2><p>Add pickup products selected for your service and texture, then pay the $10 deposit.</p></div>
+                <div><small>STEP 5 OF 5</small><h2>Review and reserve your appointment.</h2><p>Add any pickup products, choose a payment service, and complete the {money(deposit)} reservation deposit.</p></div>
               </div>
 
               {recommendations.length > 0 && (
@@ -368,7 +382,7 @@ export function BookingWizard({
                   <div className="product-choice-grid">
                     {recommendations.map((product) => (
                       <button key={product.id} className={selectedProducts.includes(product.id) ? "product-choice selected" : "product-choice"} onClick={() => toggleProduct(product.id)}>
-                        <span className="product-orb">{product.name.slice(0, 1)}</span>
+                        {product.imageUrl ? <span className="product-orb has-photo"><img src={product.imageUrl} alt="" /></span> : <span className="product-orb">{product.name.slice(0, 1)}</span>}
                         <div><b>{product.name}</b><p>{product.description}</p><small>Pickup at appointment · {product.inventory} left</small></div>
                         <strong>{money(product.priceCents)}</strong>
                         <span className="choice-check">{selectedProducts.includes(product.id) && <Check size={14} />}</span>
@@ -385,9 +399,21 @@ export function BookingWizard({
                 <div><span>PRODUCT PICKUP</span><b>{selectedProductData.length ? selectedProductData.map((item) => item.name).join(", ") : "No products added"}</b><small>{selectedProductData.length ? money(productTotal) : "You can add products at the shop later."}</small></div>
               </div>
 
+              <div className="payment-method-section">
+                <div className="recommendation-title"><div><span>PAYMENT SERVICE</span><h3>Choose the secure checkout you prefer.</h3></div><WalletCards size={20} /></div>
+                <div className="payment-option-grid">
+                  {paymentOptions.map((option) => (
+                    <button type="button" key={option.provider} className={paymentProvider === option.provider ? "payment-option selected" : "payment-option"} onClick={() => setPaymentProvider(option.provider)}>
+                      <span className="choice-check">{paymentProvider === option.provider && <Check size={14} />}</span>
+                      <div><b>{option.label}</b><small>{option.methods.join(" · ")}</small></div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="deposit-explainer">
                 <CreditCard size={20} />
-                <div><b>$10 is charged now to reserve your chair.</b><p>It is automatically deducted from your final appointment total. The remaining {money(dueAtShop)} is due to {barber.displayName} at the shop.</p></div>
+                <div><b>{money(deposit)} is charged now to reserve your chair.</b><p>It is automatically deducted from your final appointment total. The remaining {money(dueAtShop)} is due to {barber.displayName} at the shop.</p></div>
               </div>
               {error && <p className="form-error">{error}</p>}
             </div>
@@ -398,14 +424,14 @@ export function BookingWizard({
             {step < 5 ? (
               <button className="button" disabled={!canContinue()} onClick={() => setStep((current) => Math.min(5, current + 1))}>Continue <ArrowRight size={17} /></button>
             ) : (
-              <button className="button deposit-button" disabled={submitting} onClick={submitBooking}>{submitting ? "Opening secure checkout…" : "Pay $10 & confirm"} <ArrowRight size={17} /></button>
+              <button className="button deposit-button" disabled={submitting} onClick={submitBooking}>{submitting ? "Opening secure checkout…" : `${money(deposit)} deposit & confirm`} <ArrowRight size={17} /></button>
             )}
           </footer>
         </div>
 
         <aside className="booking-summary glass-card">
           <div className="summary-barber">
-            <span className="barber-portrait">{barber.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>
+            <span className={barber.profileImageUrl ? "barber-portrait has-photo" : "barber-portrait"}>{barber.profileImageUrl ? <img src={barber.profileImageUrl} alt=""/> : barber.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>
             <div><small>BOOKING WITH</small><b>{barber.displayName}</b><span>{barber.shopName}</span></div>
           </div>
           <div className="summary-line"><MapPin size={16} /><span>{barber.address}<br />{barber.city}</span></div>
@@ -418,7 +444,7 @@ export function BookingWizard({
           <div className="summary-item"><span>Service</span><b>{money(service?.priceCents || 0)}</b></div>
           <div className="summary-item"><span>Pickup products</span><b>{money(productTotal)}</b></div>
           <div className="summary-item total"><span>Appointment total</span><b>{money(total)}</b></div>
-          <div className="summary-deposit"><span>Due now</span><strong>$10</strong><small>Applied to total</small></div>
+          <div className="summary-deposit"><span>Due now</span><strong>{money(deposit)}</strong><small>Applied to total</small></div>
           <div className="summary-due"><span>Due at shop</span><b>{money(dueAtShop)}</b></div>
           <div className="summary-secure"><CreditCard size={15} /><span>Secure payment directly to the barber</span></div>
         </aside>

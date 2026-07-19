@@ -7,6 +7,7 @@ export type Service = {
   category: string;
   active: boolean;
   addOns?: string[];
+  imageUrl?: string;
 };
 
 export type Product = {
@@ -19,6 +20,7 @@ export type Product = {
   serviceTags: string[];
   pickupOnly: boolean;
   active: boolean;
+  imageUrl?: string;
 };
 
 export type Barber = {
@@ -35,6 +37,20 @@ export type Barber = {
   accent: string;
   stripeConnected: boolean;
   acceptingBookings: boolean;
+  depositCents?: number;
+  primaryPaymentProvider?: "stripe" | "square" | "paypal" | null;
+  paymentOptions?: PaymentOption[];
+  profileImageUrl?: string;
+  coverImageUrl?: string;
+  shopImageUrl?: string;
+  logoImageUrl?: string;
+  galleryImageUrls?: string[];
+};
+
+export type PaymentOption = {
+  provider: "stripe" | "square" | "paypal";
+  label: string;
+  methods: string[];
 };
 
 export type BookingStatus =

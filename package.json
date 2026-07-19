@@ -1,6 +1,6 @@
 {
-  "name": "cutflow-43-build",
-  "version": "1.0.0",
+  "name": "cutflow-production-core",
+  "version": "2.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
