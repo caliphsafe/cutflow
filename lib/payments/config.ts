@@ -10,7 +10,7 @@ export const paymentProviderDetails: Record<PaymentProvider, {
     label: "Stripe",
     description: "Cards, Apple Pay, Google Pay and Cash App Pay through Stripe Checkout.",
     customerMethods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"],
-    environmentReady: () => Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_CONNECT_CLIENT_ID),
+    environmentReady: () => Boolean(process.env.STRIPE_SECRET_KEY),
   },
   square: {
     label: "Square",

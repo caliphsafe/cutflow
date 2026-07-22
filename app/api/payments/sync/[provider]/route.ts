@@ -4,6 +4,7 @@ import { isPaymentProvider } from "@/lib/payments/config";
 
 import { getPayPalPlatformToken, paypalBaseUrl } from "@/lib/payments/paypal";
 import { getValidSquareAccessToken, squareRequest } from "@/lib/payments/square";
+import { stripeConnectionValues } from "@/lib/payments/stripe-connect";
 import { getStripe } from "@/lib/stripe";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -23,7 +24,8 @@ export async function POST(_: Request, { params }: { params: Promise<{ provider:
       const stripe = getStripe();
       if (!stripe || !connection.external_account_id) throw new Error("Stripe connection is incomplete.");
       const account = await stripe.accounts.retrieve(connection.external_account_id);
-      Object.assign(updates, { status: account.charges_enabled ? "connected" : "restricted", charges_enabled: account.charges_enabled, payouts_enabled: account.payouts_enabled, verification_status: account.details_submitted ? (account.charges_enabled ? "verified" : "requirements_due") : "onboarding", capabilities: account.capabilities || {} });
+      if ("deleted" in account && account.deleted) throw new Error("Stripe connected account is no longer available.");
+      Object.assign(updates, stripeConnectionValues(account));
     }
     if (provider === "square") {
       const token = await getValidSquareAccessToken(connection);

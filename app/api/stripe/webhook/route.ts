@@ -65,7 +65,13 @@ export async function POST(request: Request) {
 
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;
-      await admin.from("payment_connections").update({ status: account.charges_enabled ? "connected" : "restricted", charges_enabled: account.charges_enabled, payouts_enabled: account.payouts_enabled, verification_status: account.details_submitted ? (account.charges_enabled ? "verified" : "requirements_due") : "onboarding", capabilities: account.capabilities || {}, last_synced_at: new Date().toISOString() }).eq("provider", "stripe").eq("external_account_id", account.id);
+      const { data: connection } = await admin.from("payment_connections").select("id,status,metadata").eq("provider", "stripe").eq("external_account_id", account.id).maybeSingle();
+      const locallyDisabled = Boolean(connection?.metadata?.cutflow_disabled);
+      if (connection && locallyDisabled) {
+        await admin.from("payment_connections").update({ last_synced_at: new Date().toISOString() }).eq("id", connection.id);
+      } else {
+        await admin.from("payment_connections").update({ status: account.charges_enabled ? "connected" : "restricted", charges_enabled: account.charges_enabled, payouts_enabled: account.payouts_enabled, verification_status: account.details_submitted ? (account.charges_enabled ? "verified" : "requirements_due") : "onboarding", capabilities: account.capabilities || {}, metadata: { ...(connection?.metadata || {}), onboarding_method: "stripe_hosted_account_link", country: account.country, business_type: account.business_type, details_submitted: account.details_submitted, currently_due: account.requirements?.currently_due || [], past_due: account.requirements?.past_due || [], pending_verification: account.requirements?.pending_verification || [], disabled_reason: account.requirements?.disabled_reason || null, cutflow_disabled: false }, last_error: account.requirements?.disabled_reason || null, last_synced_at: new Date().toISOString() }).eq("provider", "stripe").eq("external_account_id", account.id);
+      }
     }
 
     if (event.type === "account.application.deauthorized" && event.account) {

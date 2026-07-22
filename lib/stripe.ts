@@ -4,7 +4,7 @@ export function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   return new Stripe(key, {
-    appInfo: { name: "CutFlow", version: "1.0.0" },
+    appInfo: { name: "CutFlow", version: "2.3.0" },
   });
 }
 

@@ -1,10 +1,12 @@
 import crypto from "node:crypto";
+import type Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedBarber } from "@/lib/auth/context";
 import { isPaymentProvider } from "@/lib/payments/config";
 import { getPayPalPlatformToken, paypalBaseUrl } from "@/lib/payments/paypal";
 import { squareBaseUrl } from "@/lib/payments/square";
-import { appUrl } from "@/lib/stripe";
+import { isDeletedStripeAccount, stripeConnectionValues } from "@/lib/payments/stripe-connect";
+import { appUrl, getStripe } from "@/lib/stripe";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
@@ -16,23 +18,88 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const state = crypto.randomBytes(24).toString("hex");
   const callback = `${appUrl()}/api/payments/connect/${provider}/callback`;
   const admin = createAdminSupabaseClient();
-  if (admin) {
-    await admin.from("payment_connections").upsert({
-      barber_id: ctx.barber.id,
-      provider,
-      status: "pending",
-      metadata: { oauth_state: state, initiated_by: ctx.user.id },
-      last_error: null,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "barber_id,provider" });
-  }
+  if (!admin) return NextResponse.redirect(`${appUrl()}/dashboard/connections?provider=${provider}&error=database`);
+
+  const { data: existingConnection } = await admin
+    .from("payment_connections")
+    .select("*")
+    .eq("barber_id", ctx.barber.id)
+    .eq("provider", provider)
+    .maybeSingle();
+
+  await admin.from("payment_connections").upsert({
+    barber_id: ctx.barber.id,
+    provider,
+    status: "pending",
+    metadata: { ...(existingConnection?.metadata || {}), oauth_state: state, initiated_by: ctx.user.id, cutflow_disabled: false },
+    last_error: null,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "barber_id,provider" });
 
   let destination = "";
   if (provider === "stripe") {
-    const clientId = process.env.STRIPE_CONNECT_CLIENT_ID;
-    if (!clientId) return NextResponse.redirect(`${appUrl()}/dashboard/connections?provider=stripe&error=not_configured`);
-    const query = new URLSearchParams({ response_type: "code", client_id: clientId, scope: "read_write", redirect_uri: callback, state });
-    destination = `https://connect.stripe.com/oauth/authorize?${query}`;
+    const stripe = getStripe();
+    if (!stripe) return NextResponse.redirect(`${appUrl()}/dashboard/connections?provider=stripe&error=not_configured`);
+
+    let account: Stripe.Account | null = null;
+    const existingAccountId = existingConnection?.external_account_id || ctx.barber.stripe_account_id || null;
+    if (existingAccountId) {
+      try {
+        const retrieved = await stripe.accounts.retrieve(existingAccountId);
+        if (!isDeletedStripeAccount(retrieved)) account = retrieved;
+      } catch (error) {
+        console.error("stripe-account-retrieve", error);
+      }
+    }
+
+    if (!account) {
+      const country = process.env.STRIPE_CONNECTED_ACCOUNT_COUNTRY?.trim().toUpperCase();
+      const createParams: Stripe.AccountCreateParams = {
+        type: "standard",
+        email: ctx.barber.email || ctx.user.email || undefined,
+        business_profile: {
+          name: ctx.barber.shop_name || ctx.barber.display_name || undefined,
+          url: ctx.barber.slug ? `${appUrl()}/b/${ctx.barber.slug}` : undefined,
+          product_description: "Barbershop appointments and pickup products booked through CutFlow.",
+        },
+        metadata: {
+          cutflow_barber_id: ctx.barber.id,
+          cutflow_owner_user_id: ctx.user.id,
+        },
+      };
+      if (country) createParams.country = country;
+      account = await stripe.accounts.create(createParams);
+    }
+
+    const connectionValues = stripeConnectionValues(account);
+    await admin.from("payment_connections").upsert({
+      barber_id: ctx.barber.id,
+      provider: "stripe",
+      external_account_id: account.id,
+      connected_at: existingConnection?.connected_at || new Date().toISOString(),
+      ...connectionValues,
+      metadata: { ...connectionValues.metadata, oauth_state: state, initiated_by: ctx.user.id },
+    }, { onConflict: "barber_id,provider" });
+    await admin.from("barber_profiles").update({
+      stripe_account_id: account.id,
+      stripe_connected_at: existingConnection?.connected_at || new Date().toISOString(),
+      primary_payment_provider: ctx.barber.primary_payment_provider || "stripe",
+    }).eq("id", ctx.barber.id);
+
+    if (account.charges_enabled && account.payouts_enabled) {
+      const response = NextResponse.redirect(`${appUrl()}/dashboard/connections?provider=stripe&connected=1`);
+      response.cookies.delete("cutflow_stripe_state");
+      return response;
+    }
+
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `${appUrl()}/api/payments/connect/stripe?refresh=1`,
+      return_url: `${callback}?state=${state}`,
+      type: "account_onboarding",
+      collection_options: { fields: "eventually_due" },
+    });
+    destination = accountLink.url;
   }
 
   if (provider === "square") {
@@ -78,9 +145,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const action = payload.links?.find((link: { rel: string }) => link.rel === "action_url")?.href;
       const self = payload.links?.find((link: { rel: string }) => link.rel === "self")?.href;
       if (!action) throw new Error("PayPal did not return an onboarding URL.");
-      if (admin) {
-        await admin.from("payment_connections").update({ metadata: { oauth_state: state, referral_url: self, initiated_by: ctx.user.id } }).eq("barber_id", ctx.barber.id).eq("provider", "paypal");
-      }
+      await admin.from("payment_connections").update({ metadata: { oauth_state: state, referral_url: self, initiated_by: ctx.user.id } }).eq("barber_id", ctx.barber.id).eq("provider", "paypal");
       destination = action;
     } catch (error) {
       console.error("paypal-onboarding", error);

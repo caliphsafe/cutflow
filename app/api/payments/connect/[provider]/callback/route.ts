@@ -4,6 +4,7 @@ import { isPaymentProvider } from "@/lib/payments/config";
 import { encryptSecret } from "@/lib/security/encryption";
 import { getPayPalPlatformToken, paypalBaseUrl } from "@/lib/payments/paypal";
 import { squareApiVersion, squareBaseUrl, squareRequest } from "@/lib/payments/square";
+import { stripeConnectionValues } from "@/lib/payments/stripe-connect";
 import { appUrl, getStripe } from "@/lib/stripe";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -21,26 +22,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     if (provider === "stripe") {
       const stripe = getStripe();
-      const code = request.nextUrl.searchParams.get("code");
-      if (!stripe || !code) throw new Error("Stripe authorization code is missing.");
-      const token = await stripe.oauth.token({ grant_type: "authorization_code", code });
-      if (!token.stripe_user_id) throw new Error("Stripe account was not returned.");
-      const account = await stripe.accounts.retrieve(token.stripe_user_id);
+      if (!stripe) throw new Error("Stripe is not configured.");
+      const { data: connection } = await admin
+        .from("payment_connections")
+        .select("*")
+        .eq("barber_id", ctx.barber.id)
+        .eq("provider", "stripe")
+        .maybeSingle();
+      if (!connection?.external_account_id) throw new Error("Stripe connected account is missing.");
+      const account = await stripe.accounts.retrieve(connection.external_account_id);
+      if ("deleted" in account && account.deleted) throw new Error("Stripe connected account is no longer available.");
+      const connectionValues = stripeConnectionValues(account);
       await admin.from("payment_connections").upsert({
         barber_id: ctx.barber.id,
         provider: "stripe",
-        status: account.charges_enabled ? "connected" : "restricted",
         external_account_id: account.id,
-        charges_enabled: Boolean(account.charges_enabled),
-        payouts_enabled: Boolean(account.payouts_enabled),
-        verification_status: account.details_submitted ? (account.charges_enabled ? "verified" : "requirements_due") : "onboarding",
-        capabilities: account.capabilities || {},
-        metadata: { country: account.country, business_type: account.business_type },
-        connected_at: new Date().toISOString(),
-        last_synced_at: new Date().toISOString(),
-        last_error: null,
+        connected_at: connection.connected_at || new Date().toISOString(),
+        ...connectionValues,
       }, { onConflict: "barber_id,provider" });
-      await admin.from("barber_profiles").update({ stripe_account_id: account.id, stripe_connected_at: new Date().toISOString(), primary_payment_provider: ctx.barber.primary_payment_provider || "stripe" }).eq("id", ctx.barber.id);
+      await admin.from("barber_profiles").update({
+        stripe_account_id: account.id,
+        stripe_connected_at: connection.connected_at || new Date().toISOString(),
+        primary_payment_provider: ctx.barber.primary_payment_provider || "stripe",
+      }).eq("id", ctx.barber.id);
     }
 
     if (provider === "square") {
