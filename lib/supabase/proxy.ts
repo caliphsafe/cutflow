@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase/config";
 
 function redirect(request: NextRequest, pathname: string, params?: Record<string, string>) {
   const url = request.nextUrl.clone();
@@ -10,8 +11,8 @@ function redirect(request: NextRequest, pathname: string, params?: Record<string
 }
 
 export async function updateSession(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = getSupabaseUrl();
+  const key = getSupabasePublishableKey();
   if (!url || !key) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });

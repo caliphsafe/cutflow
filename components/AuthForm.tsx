@@ -5,6 +5,32 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createBrowserSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/browser";
+import { getSupabasePublicConfigStatus } from "@/lib/supabase/config";
+
+function friendlyAuthError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return "CutFlow could not reach Supabase. Confirm the Project URL and browser Publishable key in Vercel, then redeploy.";
+  }
+  return message || "Authentication could not be completed. Please try again.";
+}
+
+function configurationMessage() {
+  const status = getSupabasePublicConfigStatus();
+  if (!status.hasUrl || !status.hasPublishableKey) {
+    return "Supabase authentication is not configured in this deployment.";
+  }
+  if (!status.validUrl) {
+    return "The Supabase Project URL in Vercel is not valid.";
+  }
+  if (status.keyType === "secret_key_not_allowed_in_browser") {
+    return "The Supabase Secret key was placed in the browser key field. Use the sb_publishable_ key instead.";
+  }
+  if (!status.validPublishableKey) {
+    return "The Supabase browser key is invalid. Use the Publishable key beginning with sb_publishable_.";
+  }
+  return "Supabase authentication is not configured correctly.";
+}
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
@@ -23,46 +49,76 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     setMessage("");
 
     if (!isSupabaseConfigured()) {
-      router.push(next);
+      setMessage(configurationMessage());
+      setLoading(false);
       return;
     }
 
     const supabase = createBrowserSupabaseClient();
-    if (!supabase) return;
-
-    const result = mode === "signup"
-      ? await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
-          },
-        })
-      : await supabase.auth.signInWithPassword({ email, password });
-
-    if (result.error) {
-      setMessage(result.error.message);
+    if (!supabase) {
+      setMessage(configurationMessage());
       setLoading(false);
       return;
     }
 
-    if (mode === "signup" && !result.data.session) {
-      setMessage("Check your email to confirm your account. The confirmation link will return you to CutFlow onboarding.");
-      setLoading(false);
-      return;
-    }
+    try {
+      const result = mode === "signup"
+        ? await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+            },
+          })
+        : await supabase.auth.signInWithPassword({ email, password });
 
-    router.push(next);
-    router.refresh();
+      if (result.error) {
+        setMessage(result.error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (mode === "signup" && !result.data.session) {
+        setMessage("Check your email to confirm your account. The confirmation link will return you to CutFlow onboarding.");
+        setLoading(false);
+        return;
+      }
+
+      router.push(next);
+      router.refresh();
+    } catch (error) {
+      setMessage(friendlyAuthError(error));
+      setLoading(false);
+    }
   }
 
   async function googleSignIn() {
-    if (!isSupabaseConfigured()) return router.push(next);
+    setMessage("");
+    if (!isSupabaseConfigured()) {
+      setMessage(configurationMessage());
+      return;
+    }
     const supabase = createBrowserSupabaseClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setMessage(configurationMessage());
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` } });
-    if (error) { setMessage(error.message); setLoading(false); }
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        },
+      });
+      if (error) {
+        setMessage(error.message);
+        setLoading(false);
+      }
+    } catch (error) {
+      setMessage(friendlyAuthError(error));
+      setLoading(false);
+    }
   }
 
   return (
