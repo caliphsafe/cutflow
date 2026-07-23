@@ -130,7 +130,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       {mode === "login" && <div className="auth-meta"><label className="remember"><input type="checkbox" /> <span>Keep me signed in</span></label><Link href="/forgot-password">Forgot password?</Link></div>}
       {message && <p className={message.startsWith("Check") ? "auth-success" : "form-error"}>{message.startsWith("Check") && <CheckCircle2 size={17}/>} {message}</p>}
       <button className="button auth-submit" disabled={loading}>{loading ? "Please wait…" : mode === "signup" ? "Create CutFlow account" : "Sign in"}<ArrowRight size={17}/></button>
-      <p className="auth-switch">{mode === "signup" ? "Already have an account?" : "New to CutFlow?"} <Link href={mode === "signup" ? "/login" : "/signup"}>{mode === "signup" ? "Sign in" : "Start free"}</Link></p>
+      <p className="auth-switch">{mode === "signup" ? "Already have an account?" : "New to CutFlow?"} <Link href={mode === "signup" ? "/login" : "/signup"}>{mode === "signup" ? "Sign in" : "Try free"}</Link></p>
     </form>
   );
 }

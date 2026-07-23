@@ -1,7 +1,12 @@
-# Upload Instructions
+# Upload CutFlow v2.4 Patch
 
-Upload all files and folders in this patch to the root of the existing `caliphsafe/cutflow` repository, preserving their paths and replacing existing files.
+This patch is for an existing CutFlow v2.3.1 repository.
 
-Then update the Vercel variables described in `AUTH_FIX_V2_3_1.md` and redeploy without the previous build cache.
+1. Unzip the patch.
+2. Open the root of `caliphsafe/cutflow` in GitHub.
+3. Upload the contents of this patch, preserving folders and replacing matching files.
+4. Do not create or upload `package-lock.json`.
+5. Commit with: `Customer-ready mobile and PWA refinement`.
+6. In Vercel, redeploy once with the previous build cache disabled.
 
-No Supabase SQL changes are required.
+No Supabase SQL migration is required.

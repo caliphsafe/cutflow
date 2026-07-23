@@ -16,6 +16,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { MarketingHeader } from "@/components/MarketingHeader";
+import { InstallAppButton } from "@/components/InstallAppButton";
 
 const platformFeatures = [
   [CalendarCheck2, "Booking that remembers", "Returning customers can repeat their exact last request, preferences and product notes instead of starting over."],
@@ -35,7 +36,7 @@ const plans = [
     features: [
       "Smart booking with $10 deposits",
       "Client profiles and haircut memory",
-      "Multiple connected payment services",
+      "Stripe-powered customer payments",
       "Product recommendations and pickup orders",
       "Automated reminders and tax-ready reports",
     ],
@@ -54,7 +55,7 @@ export default function HomePage() {
           <h1>Your chair.<br />Your clients.<br /><em>Your money.</em></h1>
           <p className="hero-lede">CutFlow combines smarter booking, haircut memory, direct deposits, retail pickup and tax-ready business reporting—without taking a percentage of the barber’s appointments.</p>
           <div className="hero-actions">
-            <Link className="button large" href="/signup">Start 14-day free trial <ArrowRight size={18} /></Link>
+            <Link className="button large" href="/signup">Try CutFlow free <ArrowRight size={18} /></Link>
             <Link className="button large secondary" href="/b/marcus-studio">View customer experience</Link>
           </div>
           <div className="proof-row">
@@ -118,13 +119,13 @@ export default function HomePage() {
 
       <section id="pricing" className="section-block pricing-section">
         <div className="section-heading"><p className="eyebrow">PRICING THAT RESPECTS THE CHAIR</p><div><h2>One complete monthly plan. No CutFlow percentage.</h2><p>All current production features are included without confusing tiers or hidden transaction commissions.</p></div></div>
-        <div className="pricing-grid single-plan">{plans.map((plan)=><article key={plan.name} className={plan.featured?"price-card featured":"price-card"}>{plan.featured&&<span className="popular">MOST POPULAR</span>}<p>{plan.name}</p><h3>${plan.price}<small>/month</small></h3><p>{plan.note}</p><ul>{plan.features.map(feature=><li key={feature}><Check size={15}/>{feature}</li>)}</ul><Link className={plan.featured?"button":"button secondary"} href={`/signup?plan=${plan.code}`}>Choose {plan.name}</Link></article>)}</div>
+        <div className="pricing-grid single-plan">{plans.map((plan)=><article key={plan.name} className={plan.featured?"price-card featured":"price-card"}>{plan.featured&&<span className="popular">MOST POPULAR</span>}<p>{plan.name}</p><h3>${plan.price}<small>/month</small></h3><p>{plan.note}</p><ul>{plan.features.map(feature=><li key={feature}><Check size={15}/>{feature}</li>)}</ul><Link className={plan.featured?"button":"button secondary"} href={`/signup?plan=${plan.code}`}>Try CutFlow free</Link></article>)}</div>
         <p className="pricing-note">14-day free trial · Cancel anytime · Processor fees are separate · No CutFlow percentage added to client payments</p>
       </section>
 
-      <section className="final-cta"><p className="eyebrow">READY TO RUN A SMARTER CHAIR?</p><h2>Make every appointment easier to book, easier to repeat and easier to report.</h2><Link className="button large" href="/signup">Build your CutFlow <ArrowRight size={18}/></Link></section>
+      <section className="final-cta"><p className="eyebrow">READY TO RUN A SMARTER CHAIR?</p><h2>Make every appointment easier to book, easier to repeat and easier to manage.</h2><div className="final-cta-actions"><Link className="button large" href="/signup">Try CutFlow free <ArrowRight size={18}/></Link><InstallAppButton /></div></section>
 
-      <footer className="marketing-footer"><div><b>CutFlow</b><p>Booking, client intelligence and business operations for independent barbers.</p></div><div><Link href="/login">Sign in</Link><Link href="/signup">Create account</Link><Link href="/b/marcus-studio">Demo storefront</Link></div><small>43 Build · SaaS foundation</small></footer>
+      <footer className="marketing-footer"><div><b>CutFlow</b><p>Booking, client profiles, direct payments and business tools for independent barbers.</p></div><div><Link href="/login">Sign in</Link><Link href="/signup">Try free</Link><Link href="/b/marcus-studio">View booking demo</Link></div><small>© 2026 CutFlow</small></footer>
     </main>
   );
 }

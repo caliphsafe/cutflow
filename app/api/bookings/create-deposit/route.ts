@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { validateBookingWindow } from "@/lib/booking-time";
 import { demoBarber, products as demoProducts, services as demoServices } from "@/lib/demo-data";
 import { createProviderCheckout, getPaymentConnection } from "@/lib/payments";
-import { isPaymentProvider } from "@/lib/payments/config";
 import { randomToken, hashToken } from "@/lib/security/encryption";
 import { appUrl } from "@/lib/stripe";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -20,7 +19,6 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { barberSlug, serviceId, selectedDate, selectedTime, customer, haircutRequest, productIds = [] } = body;
-    const requestedProvider = String(body.paymentProvider || "");
 
     if (!barberSlug || !serviceId || !selectedDate || !selectedTime || !customer?.name || !customer?.email || !customer?.phone) {
       return NextResponse.json({ error: "Complete the customer, service, date and time before checkout." }, { status: 400 });
@@ -89,12 +87,11 @@ export async function POST(request: Request) {
     const balanceCents = Math.max(0, totalCents - depositCents);
     let bookingId = code;
 
-    let provider = requestedProvider || barber.primary_payment_provider || "stripe";
-    if (!isPaymentProvider(provider)) provider = "stripe";
+    const provider = "stripe" as const;
 
     if (admin) {
       const connection = await getPaymentConnection(barber.id, provider);
-      if (!connection?.charges_enabled) return NextResponse.json({ error: "The selected payment service is not currently ready. Choose another available payment option." }, { status: 400 });
+      if (!connection?.charges_enabled) return NextResponse.json({ error: "Stripe checkout is not currently ready for this barber. Please contact the barber directly." }, { status: 400 });
 
       const { data: client, error: clientError } = await admin.from("clients").upsert({
         barber_id: barber.id,

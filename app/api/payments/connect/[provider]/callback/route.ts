@@ -10,12 +10,14 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
+  const popup = request.nextUrl.searchParams.get("popup") === "1";
+  const finishUrl = (status: "connected" | "error", message?: string) => { const query = new URLSearchParams({ provider, status }); if (message) query.set("message", message); return `${appUrl()}/payments/connect/complete?${query}`; };
   if (!isPaymentProvider(provider)) return NextResponse.redirect(`${appUrl()}/dashboard/connections?error=unsupported`);
   const ctx = await getAuthenticatedBarber();
   if (!ctx.user || !ctx.barber) return NextResponse.redirect(`${appUrl()}/login?next=/dashboard/connections`);
   const state = request.nextUrl.searchParams.get("state");
   const expected = request.cookies.get(`cutflow_${provider}_state`)?.value;
-  if (!state || state !== expected) return NextResponse.redirect(`${appUrl()}/dashboard/connections?provider=${provider}&error=state`);
+  if (!state || state !== expected) return NextResponse.redirect(popup ? finishUrl("error", "The secure connection session expired. Please try again.") : `${appUrl()}/dashboard/connections?provider=${provider}&error=state`);
   const admin = createAdminSupabaseClient();
   if (!admin) return NextResponse.redirect(`${appUrl()}/dashboard/connections?provider=${provider}&error=database`);
 
@@ -118,12 +120,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       if (!ctx.barber.primary_payment_provider) await admin.from("barber_profiles").update({ primary_payment_provider: "paypal" }).eq("id", ctx.barber.id);
     }
 
-    const response = NextResponse.redirect(`${appUrl()}/dashboard/connections?provider=${provider}&connected=1`);
+    const response = NextResponse.redirect(popup ? finishUrl("connected") : `${appUrl()}/dashboard/connections?provider=${provider}&connected=1`);
     response.cookies.delete(`cutflow_${provider}_state`);
     return response;
   } catch (error) {
     console.error(`${provider}-callback`, error);
     await admin.from("payment_connections").update({ status: "error", last_error: error instanceof Error ? error.message : "Connection failed" }).eq("barber_id", ctx.barber.id).eq("provider", provider);
-    return NextResponse.redirect(`${appUrl()}/dashboard/connections?provider=${provider}&error=callback`);
+    const message = error instanceof Error ? error.message : "Connection failed";
+    return NextResponse.redirect(popup ? finishUrl("error", message) : `${appUrl()}/dashboard/connections?provider=${provider}&error=callback`);
   }
 }

@@ -25,6 +25,7 @@ import {
 import { useEffect, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { Logo } from "./Logo";
+import { InstallAppButton } from "./InstallAppButton";
 import { DashboardHelpCenter } from "./help/DashboardHelpCenter";
 
 const links = [
@@ -89,8 +90,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <div className="sidebar-bottom">
           <Link href={bookingUrl} target="_blank"><ExternalLink size={17} /><span>Open booking page</span></Link>
+          <InstallAppButton compact className="sidebar-install" />
           <button onClick={signOut}><LogOut size={17} /><span>Sign out</span></button>
-          <small>CutFlow v2 · Production Core</small>
+          <small>CutFlow</small>
         </div>
       </aside>
 

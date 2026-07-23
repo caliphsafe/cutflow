@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MetricCard } from "@/components/MetricCard";
 import { RevenueBars } from "@/components/RevenueBars";
 import { StatusPill } from "@/components/StatusPill";
+import { LaunchReadiness } from "@/components/LaunchReadiness";
 import { dateTime, initials, money } from "@/lib/format";
 import type { Booking, Customer, Product, Transaction } from "@/lib/types";
 
@@ -71,6 +72,7 @@ export default function DashboardPage() {
       <article className="dashboard-card quick-actions"><header><p className="eyebrow">QUICK ACTIONS</p><h2>Move the day forward.</h2></header><div><Link href="/dashboard/bookings"><span><CalendarCheck2/></span><div><b>Add manual booking</b><small>For calls and walk-ins.</small></div><ArrowRight/></Link><Link href="/dashboard/clients"><span><UserPlus/></span><div><b>Create client profile</b><small>Add notes before first booking.</small></div><ArrowRight/></Link><Link href="/dashboard/payments"><span><CreditCard/></span><div><b>Record a payment</b><small>Cash, card or product sale.</small></div><ArrowRight/></Link><Link href="/dashboard/reports"><span><CircleDollarSign/></span><div><b>Export this month</b><small>Income and transaction CSV.</small></div><ArrowRight/></Link></div></article>
       <article className="dashboard-card inventory-watch"><header><div><p className="eyebrow">PICKUP INVENTORY</p><h2>Products to watch</h2></div><Link href="/dashboard/products">Manage</Link></header>{products.filter((product) => product.active).slice(0, 5).map((product) => <div className="inventory-row" key={product.id}><span className="product-dot">{product.name[0]}</span><div><b>{product.name}</b><small>{product.inventory} units · {product.textureTags.slice(0, 3).join(", ")}</small></div><span className={product.inventory < 7 ? "stock-pill low" : "stock-pill"}>{product.inventory < 7 ? "Low" : "In stock"}</span></div>)}</article>
     </section>
-    {!profile.stripeConnected && <section className="setup-callout"><span><Clock3/></span><div><b>Connect Stripe to begin collecting live $10 deposits.</b><p>Connected-account onboarding activates direct payments to the barber.</p></div><Link className="button" href="/dashboard/settings">Finish payment setup <ArrowRight/></Link></section>}
+    {!profile.stripeConnected && <section className="setup-callout"><span><Clock3/></span><div><b>Connect Stripe to begin collecting live booking deposits.</b><p>Stripe securely verifies the barber and sends customer payments to the connected account.</p></div><Link className="button" href="/dashboard/connections">Connect Stripe <ArrowRight/></Link></section>}
+    <LaunchReadiness/>
   </div>;
 }

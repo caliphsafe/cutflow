@@ -14,7 +14,7 @@ const rows = [
   ["media", "Add barber and shop photos", "/dashboard/media"],
   ["services", "Add at least one service", "/dashboard/services"],
   ["availability", "Set weekly availability", "/dashboard/settings"],
-  ["payments", "Connect a payment service", "/dashboard/connections"],
+  ["payments", "Connect Stripe", "/dashboard/connections"],
   ["subscription", "Activate CutFlow subscription", "/dashboard/subscription"],
 ] as const;
 

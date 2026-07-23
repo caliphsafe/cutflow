@@ -8,7 +8,7 @@ export const paymentProviderDetails: Record<PaymentProvider, {
 }> = {
   stripe: {
     label: "Stripe",
-    description: "Cards, Apple Pay, Google Pay and Cash App Pay through Stripe Checkout.",
+    description: "Secure customer payments by card, Apple Pay, Google Pay and eligible digital wallets.",
     customerMethods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"],
     environmentReady: () => Boolean(process.env.STRIPE_SECRET_KEY),
   },
@@ -16,18 +16,21 @@ export const paymentProviderDetails: Record<PaymentProvider, {
     label: "Square",
     description: "Square-hosted checkout using the barber’s own Square account.",
     customerMethods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"],
-    environmentReady: () => Boolean(process.env.SQUARE_APPLICATION_ID && process.env.SQUARE_APPLICATION_SECRET && process.env.PAYMENT_TOKEN_ENCRYPTION_KEY),
+    environmentReady: () => false,
   },
   paypal: {
     label: "PayPal & Venmo",
-    description: "PayPal Complete Payments with Venmo when CutFlow and the seller are eligible.",
+    description: "PayPal and Venmo checkout when CutFlow and the seller are eligible.",
     customerMethods: ["PayPal", "Venmo", "Pay Later", "Cards"],
-    environmentReady: () => Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET && process.env.PAYPAL_PARTNER_MERCHANT_ID),
+    environmentReady: () => false,
   },
 };
 
-export const providers = Object.keys(paymentProviderDetails) as PaymentProvider[];
+// Stripe is the only provider exposed in the production interface until
+// additional provider onboarding and live webhook verification are complete.
+export const providers: PaymentProvider[] = ["stripe"];
+const knownProviders: PaymentProvider[] = ["stripe", "square", "paypal"];
 
 export function isPaymentProvider(value: string): value is PaymentProvider {
-  return providers.includes(value as PaymentProvider);
+  return knownProviders.includes(value as PaymentProvider);
 }

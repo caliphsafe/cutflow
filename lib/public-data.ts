@@ -44,7 +44,7 @@ export async function getPublicBarber(slug: string): Promise<PublicBarberData | 
       : Promise.resolve({ data: [] as Array<{ provider: string; status: string; charges_enabled: boolean }> }),
   ]);
 
-  const paymentOptions: PaymentOption[] = (connectionRows || []).map((row) => {
+  const paymentOptions: PaymentOption[] = (connectionRows || []).filter((row) => row.provider === "stripe").map((row) => {
     const provider = row.provider as PaymentOption["provider"];
     const details = paymentProviderDetails[provider];
     return { provider, label: details.label, methods: details.customerMethods };

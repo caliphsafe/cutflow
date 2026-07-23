@@ -139,8 +139,9 @@ export function BookingWizard({
   const productTotal = selectedProductData.reduce((sum, product) => sum + product.priceCents, 0);
   const total = (service?.priceCents || 0) + productTotal;
   const deposit = barber.depositCents ?? 1000;
-  const paymentOptions = barber.paymentOptions?.length ? barber.paymentOptions : [{ provider: "stripe" as const, label: "Card or digital wallet", methods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"] }];
-  const [paymentProvider, setPaymentProvider] = useState<"stripe" | "square" | "paypal">((barber.primaryPaymentProvider || paymentOptions[0]?.provider || "stripe") as "stripe" | "square" | "paypal");
+  const paymentOptions = (barber.paymentOptions?.length ? barber.paymentOptions : [{ provider: "stripe" as const, label: "Secure online payment", methods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"] }]).filter((option) => option.provider === "stripe");
+  const paymentProvider = "stripe" as const;
+  const smsEnabled = process.env.NEXT_PUBLIC_SMS_ENABLED === "true";
   const dueAtShop = Math.max(0, total - deposit);
 
   const recommendations = products.filter((product) =>
@@ -262,14 +263,14 @@ export function BookingWizard({
             <div className="booking-step">
               <div className="step-heading">
                 <span className="step-icon"><UserRound size={20} /></span>
-                <div><small>STEP 1 OF 5</small><h2>Let’s find your chair profile.</h2><p>Returning clients can reuse their saved haircut details in one tap.</p></div>
+                <div><small>STEP 1 OF 5</small><h2>Enter your contact information.</h2><p>We’ll use these details to confirm your appointment and recognize returning clients.</p></div>
               </div>
 
               <div className="form-grid two">
                 <label><span>Full name</span><input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder="Your full name" /></label>
                 <label><span>Mobile number</span><input value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} onBlur={identifyReturningCustomer} placeholder="(508) 555-0123" inputMode="tel" /></label>
                 <label className="full"><span>Email</span><input value={customer.email} onChange={(event) => setCustomer({ ...customer, email: event.target.value })} onBlur={identifyReturningCustomer} placeholder="you@example.com" type="email" /></label>
-                <label className="full consent-check"><input type="checkbox" checked={customer.smsConsent} onChange={(event) => setCustomer({ ...customer, smsConsent: event.target.checked })} /><span><b>Text me appointment updates</b><small>Booking confirmations and reminders only. Message rates may apply.</small></span></label>
+                {smsEnabled && <label className="full consent-check"><input type="checkbox" checked={customer.smsConsent} onChange={(event) => setCustomer({ ...customer, smsConsent: event.target.checked })} /><span><b>Text me appointment updates</b><small>Booking confirmations and reminders only. Message rates may apply.</small></span></label>}
               </div>
 
               {lookupLoading && <div className="privacy-note"><Clock3 size={16} /><span>Checking for your saved chair profile…</span></div>}
@@ -373,7 +374,7 @@ export function BookingWizard({
             <div className="booking-step">
               <div className="step-heading">
                 <span className="step-icon"><PackageCheck size={20} /></span>
-                <div><small>STEP 5 OF 5</small><h2>Review and reserve your appointment.</h2><p>Add any pickup products, choose a payment service, and complete the {money(deposit)} reservation deposit.</p></div>
+                <div><small>STEP 5 OF 5</small><h2>Review and book your appointment.</h2><p>Add any pickup products, review your details, and complete the {money(deposit)} reservation deposit.</p></div>
               </div>
 
               {recommendations.length > 0 && (
@@ -400,13 +401,13 @@ export function BookingWizard({
               </div>
 
               <div className="payment-method-section">
-                <div className="recommendation-title"><div><span>PAYMENT SERVICE</span><h3>Choose the secure checkout you prefer.</h3></div><WalletCards size={20} /></div>
-                <div className="payment-option-grid">
+                <div className="recommendation-title"><div><span>SECURE PAYMENT</span><h3>Complete your deposit through Stripe.</h3></div><WalletCards size={20} /></div>
+                <div className="payment-option-grid single">
                   {paymentOptions.map((option) => (
-                    <button type="button" key={option.provider} className={paymentProvider === option.provider ? "payment-option selected" : "payment-option"} onClick={() => setPaymentProvider(option.provider)}>
-                      <span className="choice-check">{paymentProvider === option.provider && <Check size={14} />}</span>
+                    <div key={option.provider} className="payment-option selected">
+                      <span className="choice-check"><Check size={14} /></span>
                       <div><b>{option.label}</b><small>{option.methods.join(" · ")}</small></div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>

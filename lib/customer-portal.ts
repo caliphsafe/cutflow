@@ -11,6 +11,6 @@ export async function getCustomerPortalBooking(token: string) {
   if (!booking) return null;
   const { data: policy } = await admin.from("booking_policies").select("*").eq("barber_id", booking.barber_id).maybeSingle();
   const { data: payments } = await admin.from("transactions").select("id,type,status,gross_cents,refund_cents,payment_method_label,occurred_at").eq("booking_id", booking.id).order("occurred_at");
-  const { data: connections } = await admin.from("payment_connections").select("provider,status,charges_enabled").eq("barber_id", booking.barber_id).eq("status", "connected").eq("charges_enabled", true);
+  const { data: connections } = await admin.from("payment_connections").select("provider,status,charges_enabled").eq("barber_id", booking.barber_id).eq("provider", "stripe").eq("status", "connected").eq("charges_enabled", true);
   return { booking, policy, payments: payments || [], connections: connections || [] };
 }

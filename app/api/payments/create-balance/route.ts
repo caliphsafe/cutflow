@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedBarber } from "@/lib/auth/context";
 import { createProviderCheckout, getPaymentConnection } from "@/lib/payments";
-import { isPaymentProvider } from "@/lib/payments/config";
 import { hashToken } from "@/lib/security/encryption";
 import { appUrl } from "@/lib/stripe";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -33,10 +32,9 @@ export async function POST(request: Request) {
     if (booking.balance_cents <= 0 || booking.payment_status === "paid") return NextResponse.json({ error: "This appointment has no open balance." }, { status: 400 });
     const barber = Array.isArray(booking.barber) ? booking.barber[0] : booking.barber;
     const service = Array.isArray(booking.service) ? booking.service[0] : booking.service;
-    const requestedProvider = String(body.paymentProvider || barber?.primary_payment_provider || "stripe");
-    const provider = isPaymentProvider(requestedProvider) ? requestedProvider : "stripe";
+    const provider = "stripe" as const;
     const connection = await getPaymentConnection(booking.barber_id, provider);
-    if (!connection?.charges_enabled) return NextResponse.json({ error: "That payment service is not ready for this barber." }, { status: 400 });
+    if (!connection?.charges_enabled) return NextResponse.json({ error: "Stripe checkout is not ready for this barber." }, { status: 400 });
 
     const idempotencyKey = `${booking.id}-${provider}-service-balance-${booking.balance_cents}`;
     const { data: existing } = await admin.from("payment_sessions").select("id,status,external_session_id,metadata").eq("idempotency_key", idempotencyKey).maybeSingle();
