@@ -1,11 +1,3 @@
-# Upload Instructions
+# Upload CutFlow v2.5 patch
 
-Upload every file and folder in this patch to the root of the existing `caliphsafe/cutflow` repository and replace matching files.
-
-Commit message:
-
-`Fix mobile menu, setup links and storefront preview`
-
-No Supabase SQL migration is required.
-
-After GitHub commits the files, redeploy CutFlow in Vercel without using the previous build cache.
+Upload every file and folder in this patch to the root of the existing GitHub repository and replace matching files. No Supabase SQL is required. Redeploy without the previous build cache. Do not add package-lock.json.
