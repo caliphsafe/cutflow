@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Images,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Menu,
   Package,
@@ -34,6 +35,7 @@ const links = [
   ["Clients", "/dashboard/clients", Users],
   ["Payments", "/dashboard/payments", CreditCard],
   ["Connections", "/dashboard/connections", PlugZap],
+  ["Customer readiness", "/dashboard/readiness", ListChecks],
   ["Reports", "/dashboard/reports", BarChart3],
   ["Services", "/dashboard/services", Scissors],
   ["Products", "/dashboard/products", Package],
@@ -56,6 +58,24 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     }).catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   async function signOut() {
     const supabase = createBrowserSupabaseClient();
     if (supabase) await supabase.auth.signOut();
@@ -68,7 +88,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="dashboard-shell">
-      <aside className={open ? "dashboard-sidebar open" : "dashboard-sidebar"}>
+      <aside id="cutflow-mobile-navigation" className={open ? "dashboard-sidebar open" : "dashboard-sidebar"} aria-hidden={!open && undefined}>
         <div className="sidebar-top">
           <Logo />
           <button className="icon-button sidebar-close" onClick={() => setOpen(false)} aria-label="Close menu"><X size={18} /></button>
@@ -100,7 +120,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       <main className="dashboard-main">
         <header className="mobile-dashboard-bar">
-          <button className="icon-button" onClick={() => setOpen(true)} aria-label="Open menu"><Menu size={20} /></button>
+          <button className="icon-button" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} aria-controls="cutflow-mobile-navigation"><Menu size={20} /></button>
           <Logo compact />
           <Link className="icon-button" href={bookingUrl} aria-label="Open booking page"><ExternalLink size={18} /></Link>
         </header>

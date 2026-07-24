@@ -5,8 +5,9 @@ import { createServerSupabaseClient } from "./supabase/server";
 import { paymentProviderDetails } from "./payments/config";
 
 export type PublicBarberData = { barber: Barber; services: Service[]; products: Product[]; demo: boolean };
+export type PublicBarberOptions = { ownerPreview?: boolean };
 
-export async function getPublicBarber(slug: string): Promise<PublicBarberData | null> {
+export async function getPublicBarber(slug: string, options: PublicBarberOptions = {}): Promise<PublicBarberData | null> {
   const admin = createAdminSupabaseClient();
   const supabase = admin || await createServerSupabaseClient();
   if (!supabase) {
@@ -14,14 +15,14 @@ export async function getPublicBarber(slug: string): Promise<PublicBarberData | 
     return slug === demoBarber.slug ? { barber: { ...demoBarber, depositCents: 1000, primaryPaymentProvider: "stripe", paymentOptions: demoPaymentOptions }, services: demoServices, products: demoProducts, demo: true } : null;
   }
 
-  const { data: profile } = await supabase
+  let profileQuery = supabase
     .from("barber_profiles")
     .select("id,slug,display_name,shop_name,headline,bio,address,city,phone,email,accent_color,booking_deposit_cents,stripe_account_id,accepting_bookings,storefront_published,primary_payment_provider,owner_user_id,profile_image_url,cover_image_url,shop_image_url,logo_image_url,gallery_image_urls")
-    .eq("slug", slug)
-    .eq("active", true)
-    .maybeSingle();
+    .eq("slug", slug);
+  if (!options.ownerPreview) profileQuery = profileQuery.eq("active", true);
+  const { data: profile } = await profileQuery.maybeSingle();
 
-  if (profile && admin) {
+  if (profile && admin && !options.ownerPreview) {
     const { data: subscription } = await admin.from("subscriptions").select("status,trial_ends_at,current_period_end").eq("owner_user_id", profile.owner_user_id).maybeSingle();
     const status = subscription?.status || "";
     const trialValid = status === "trialing" && (!subscription?.trial_ends_at || new Date(subscription.trial_ends_at).getTime() > Date.now());
@@ -29,7 +30,7 @@ export async function getPublicBarber(slug: string): Promise<PublicBarberData | 
     if (!activeSubscription) return null;
   }
 
-  if (!profile || profile.storefront_published === false) {
+  if (!profile || (!options.ownerPreview && profile.storefront_published === false)) {
     if (slug === demoBarber.slug) {
       return { barber: { ...demoBarber, depositCents: 1000, primaryPaymentProvider: "stripe", paymentOptions: [{ provider: "stripe", label: "Card, Apple Pay or Cash App Pay", methods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"] }] }, services: demoServices, products: demoProducts, demo: true };
     }

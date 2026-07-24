@@ -85,9 +85,11 @@ export default function StorefrontPage() {
   }, []);
 
   const publicPath = useMemo(() => `/b/${data.slug || "your-booking-url"}`, [data.slug]);
+  const previewPath = useMemo(() => `${publicPath}?preview=1`, [publicPath]);
+  const sharePath = data.storefrontPublished ? publicPath : previewPath;
 
   function copy() {
-    navigator.clipboard?.writeText(`${window.location.origin}${publicPath}`);
+    navigator.clipboard?.writeText(`${window.location.origin}${sharePath}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
@@ -118,6 +120,7 @@ export default function StorefrontPage() {
     <header className="page-header">
       <div><p className="eyebrow">PUBLIC CUSTOMER EXPERIENCE</p><h1>Storefront</h1><p>Control the barber page customers share, browse and use to book.</p></div>
       <div className="page-actions">
+        <Link className="button secondary" href={previewPath} target="_blank"><Eye/> Preview storefront</Link>
         {data.storefrontPublished && <Link className="button secondary" href={publicPath} target="_blank"><ExternalLink/> Open live page</Link>}
         <button className="button secondary" onClick={() => save()} disabled={saving}><Save/> {saving ? "Saving…" : "Save"}</button>
         <button className="button" onClick={() => save({ storefrontPublished: !data.storefrontPublished })} disabled={saving || (!setup.ready && !data.storefrontPublished)}><UploadCloud/> {data.storefrontPublished ? "Unpublish" : "Publish storefront"}</button>
@@ -146,11 +149,11 @@ export default function StorefrontPage() {
           <div>{data.profileImageUrl ? <img src={data.profileImageUrl} alt=""/> : <span><Images/></span>}<div><small>PHOTOS & MEDIA</small><b>{data.profileImageUrl && (data.coverImageUrl || data.shopImageUrl) ? "Customer photography ready" : "Add real barber and shop images"}</b><p>Manage the portrait, cover, shop, logo and gallery images used throughout the public page.</p></div></div>
           <Link className="button secondary" href="/dashboard/media"><Images/> Manage photos</Link>
         </div>
-        <div className="share-url"><div><small>{data.storefrontPublished ? "LIVE SHAREABLE LINK" : "PRIVATE PREVIEW LINK"}</small><b>{typeof window === "undefined" ? "cutflow.app" : window.location.host}{publicPath}</b></div><button onClick={copy}>{copied ? <Check/> : <Copy/>}{copied ? "Copied" : "Copy"}</button></div>
+        <div className="share-url"><div><small>{data.storefrontPublished ? "LIVE SHAREABLE LINK" : "PRIVATE OWNER PREVIEW"}</small><b>{typeof window === "undefined" ? "cutflow.app" : window.location.host}{sharePath}</b>{!data.storefrontPublished && <em>Preview links require the barber to be signed in and cannot be shared with customers.</em>}</div><button onClick={copy}>{copied ? <Check/> : <Copy/>}{copied ? "Copied" : data.storefrontPublished ? "Copy" : "Copy preview"}</button></div>
       </article>
 
       <aside className="storefront-phone-preview">
-        <header><div><Smartphone/><span><small>MOBILE PREVIEW</small><b>Customer page</b></span></div>{data.storefrontPublished && <Link href={publicPath} target="_blank"><Eye/> Preview</Link>}</header>
+        <header><div><Smartphone/><span><small>MOBILE PREVIEW</small><b>Customer page</b></span></div><Link href={previewPath} target="_blank"><Eye/> Open preview</Link></header>
         <div className="preview-phone"><div className="phone-island"/><div className="preview-phone-nav"><b>{data.shopName || data.displayName || "Your studio"}</b><span>•••</span></div><div className={data.coverImageUrl ? "preview-phone-hero has-image" : "preview-phone-hero"} style={{ "--preview-accent": data.accent, ...(data.coverImageUrl ? { backgroundImage: `linear-gradient(rgba(10,10,10,.48),rgba(10,10,10,.72)),url(${data.coverImageUrl})` } : {}) } as React.CSSProperties}>{data.profileImageUrl && <img className="preview-barber-avatar" src={data.profileImageUrl} alt=""/>}<small>{data.acceptingBookings ? "ACCEPTING BOOKINGS" : "BOOKING PAUSED"}</small><h2>{data.headline || "Your best cut starts with a clearer request."}</h2><p>{(data.bio || "Tell clients what makes your chair and service experience different.").slice(0, 120)}{data.bio.length > 120 ? "…" : ""}</p><button>{data.acceptingBookings ? "View availability →" : "View services"}</button></div><div className="preview-phone-services"><small>SERVICES</small>{services.filter((service) => service.active).slice(0, 3).map((service) => <div key={service.id}><span><b>{service.name}</b><small>{service.durationMinutes} min</small></span><strong>{money(service.priceCents)}</strong></div>)}</div></div>
       </aside>
     </section>
