@@ -1,14 +1,5 @@
-# Vercel Install Fix
+# Vercel dependency installation
 
-This revision fixes the Vercel dependency installation failure:
+CutFlow v2.3 intentionally does not include `package-lock.json`.
 
-`npm error Exit handler never called!`
-
-Changes:
-
-- Replaced private/internal registry URLs in `package-lock.json` with the public npm registry.
-- Added a root `.npmrc` that explicitly uses `https://registry.npmjs.org/` and retries transient downloads.
-- Pinned Vercel to Node.js 22 through `package.json`.
-- Limited Next.js production builds to four workers in `next.config.ts` for stability on high-core CI machines.
-
-Upload the four replacement files in the patch ZIP to the root of the GitHub repository and overwrite the existing files, then redeploy without the previous build cache.
+The project includes `.npmrc` with the public npm registry, and Vercel installs dependencies directly from `package.json`. This follows the preferred CutFlow deployment workflow and avoids the npm lockfile installation failure encountered in earlier builds.

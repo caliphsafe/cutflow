@@ -10,26 +10,13 @@ import { getSupabasePublicConfigStatus } from "@/lib/supabase/config";
 function friendlyAuthError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "");
   if (/failed to fetch|networkerror|load failed/i.test(message)) {
-    return "CutFlow could not reach Supabase. Confirm the Project URL and browser Publishable key in Vercel, then redeploy.";
+    return "CutFlow sign-in is temporarily unavailable. Check your connection and try again.";
   }
-  return message || "Authentication could not be completed. Please try again.";
+  return message || "Sign-in could not be completed. Please try again.";
 }
 
 function configurationMessage() {
-  const status = getSupabasePublicConfigStatus();
-  if (!status.hasUrl || !status.hasPublishableKey) {
-    return "Supabase authentication is not configured in this deployment.";
-  }
-  if (!status.validUrl) {
-    return "The Supabase Project URL in Vercel is not valid.";
-  }
-  if (status.keyType === "secret_key_not_allowed_in_browser") {
-    return "The Supabase Secret key was placed in the browser key field. Use the sb_publishable_ key instead.";
-  }
-  if (!status.validPublishableKey) {
-    return "The Supabase browser key is invalid. Use the Publishable key beginning with sb_publishable_.";
-  }
-  return "Supabase authentication is not configured correctly.";
+  return "CutFlow sign-in is temporarily unavailable. Please try again shortly or contact CutFlow support.";
 }
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {

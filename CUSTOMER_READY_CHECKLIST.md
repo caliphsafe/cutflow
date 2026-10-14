@@ -1,24 +1,30 @@
-# Customer-Ready Checklist
+# CutFlow Launch Checklist
 
-## Already connected in CutFlow
+## Barber experience
 
-- Supabase authentication and Google sign-in
-- Stripe subscription billing routes
-- Stripe-hosted barber onboarding
-- Stripe connected-account deposit and balance checkout
-- Signed Stripe webhook confirmation
-- Customer appointment portal
-- Services, products, media and storefront management
-- Mobile booking experience
-- Installable Home Screen web app
+- Sign up and Google sign-in work on mobile and desktop.
+- The mobile menu opens above the blurred page and can scroll independently.
+- Every barber can preview an unpublished storefront privately.
+- Services, hours, policies, photos, products and Stripe can be completed from clear dashboard actions.
+- Customer confirmations and reminders use simple switches with no third-party setup shown to barbers.
+- Sign in and Try free remain visible on the mobile home page.
 
-## Must be verified before public customer use
+## Customer booking
 
-1. `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set in Vercel.
-2. The Resend sending domain is verified.
-3. `CRON_SECRET` is set and `supabase/notification-worker.sql` has been run with the live domain and matching secret.
-4. A live $10 booking confirms the appointment, ledger entry, customer email and barber email.
-5. The storefront includes a real barber portrait, cover/shop image, services, hours, policies and a connected Stripe account.
-6. A custom domain, support email, terms, privacy policy and refund/cancellation language are reviewed before broad commercial launch.
+- The storefront uses real barber and shop photography.
+- Services show accurate price and duration.
+- Available times respect hours, blocked time and booking rules.
+- The deposit is credited toward the total.
+- The customer appointment link supports details, calendar access, rescheduling, cancellation, balance payment and receipts.
 
-SMS remains hidden by default and should only be enabled after Twilio and consent requirements are complete.
+## Money
+
+- Appointment checkout remains a direct Stripe charge on the barber's account.
+- CutFlow appointment application fee is $0.
+- The build-time fee guard passes.
+- Stripe's normal payment-processing fee is shown separately in CutFlow reporting.
+- The live Stripe Dashboard has no platform pricing rule or collected appointment fee.
+
+## Platform owner
+
+Complete the private steps in `OWNER_LAUNCH_SETUP.md`, then run one real booking from beginning to end before public promotion.

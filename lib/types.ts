@@ -38,7 +38,7 @@ export type Barber = {
   stripeConnected: boolean;
   acceptingBookings: boolean;
   depositCents?: number;
-  primaryPaymentProvider?: "stripe" | "square" | "paypal" | null;
+  primaryPaymentProvider?: "stripe" | "square" | "paypal" | "external" | null;
   paymentOptions?: PaymentOption[];
   profileImageUrl?: string;
   coverImageUrl?: string;
@@ -48,9 +48,12 @@ export type Barber = {
 };
 
 export type PaymentOption = {
-  provider: "stripe" | "square" | "paypal";
+  provider: "stripe" | "cash_app" | "venmo";
   label: string;
   methods: string[];
+  accountHandle?: string;
+  paymentUrl?: string;
+  verification?: "processor" | "payment_email";
 };
 
 export type BookingStatus =
@@ -76,6 +79,7 @@ export type Booking = {
   depositCents: number;
   balanceCents: number;
   paymentStatus: "deposit_due" | "deposit_paid" | "paid" | "refunded";
+  paymentProvider?: string;
   haircutRequest: HaircutRequest;
   productIds: string[];
   notes?: string;

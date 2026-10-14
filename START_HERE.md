@@ -1,39 +1,50 @@
-# Start Here — Upgrade CutFlow to v2.4
+# Start Here — Upgrade CutFlow to v2.5
 
-This package adds the customer-ready copy, Stripe-only production interface, Stripe popup onboarding, mobile optimization and installable Home Screen app behavior requested after v2.3.1.
+This release completes the launch-facing cleanup requested after v2.4.1. It keeps the mobile menu and private storefront preview fixes, removes developer language from the barber dashboard, expands the marketing home page and protects the $0 CutFlow appointment commission.
 
 ## 1. Upload the build
 
-Upload the contents of this folder to the root of the existing `caliphsafe/cutflow` GitHub repository and replace matching files. Keep `app`, `components`, `lib`, `public`, `supabase`, `package.json` and `.npmrc` at the root.
+Upload the contents of this folder to the root of the existing `caliphsafe/cutflow` GitHub repository and replace matching files.
 
-Do not add `package-lock.json` and do not upload a local `.env` file.
+Keep these items at the repository root:
+
+- `app`
+- `components`
+- `lib`
+- `public`
+- `scripts`
+- `supabase`
+- `package.json`
+- `.npmrc`
+
+Do not upload a local `.env` file and do not add `package-lock.json`.
 
 ## 2. Supabase
 
-No new SQL migration is required for v2.4. Keep the existing v2.2/v2.3 database and Storage configuration.
+No new SQL migration is required for v2.5.
 
 ## 3. Vercel
 
-No new required variable is needed for app installation. Keep the existing Supabase and Stripe variables.
+No new required environment variable was added.
 
-Optional SMS control:
+Leave text messages disabled until the CutFlow platform is ready to support them:
 
 ```text
 NEXT_PUBLIC_SMS_ENABLED=false
 ```
 
-Leave it false until Twilio is fully configured.
+Redeploy once without using the previous build cache.
 
-Redeploy once without reusing the previous build cache.
+## 4. Confirm the customer-facing update
 
-## 4. Confirm the update
+- The home page explains the complete feature set.
+- The pricing comparison shows fixed monthly pricing versus an illustrative commission.
+- The dashboard contains no Vercel, Supabase, Resend, Twilio, API-key, worker, credential or SQL instructions.
+- Booking confirmations and reminders are simple barber-controlled switches.
+- The mobile menu opens above the blur layer.
+- The barber can always open a private storefront preview.
+- Stripe remains the only visible payment service.
 
-- The mobile home header shows **Sign in** and **Try free**.
-- Dashboard → Connections shows only Stripe.
-- **Connect Stripe** opens a focused setup window on desktop.
-- The dashboard offers **Install CutFlow** / **Add CutFlow to phone**.
-- The dashboard Customer Readiness card shows whether booking emails and automatic reminders still need setup.
+## 5. Platform-owner launch work
 
-## 5. Finish customer communication
-
-Before broad public use, complete Resend and the Supabase notification worker. See `CUSTOMER_READY_CHECKLIST.md`.
+Read `OWNER_LAUNCH_SETUP.md`. Those steps are for the CutFlow owner only and are intentionally hidden from barbers.

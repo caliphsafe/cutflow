@@ -11,7 +11,7 @@ export function PasswordRecoveryForm() {
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setLoading(true); setMessage("");
     const supabase = createBrowserSupabaseClient();
-    if (!supabase) { setMessage("Demo mode: password recovery requires Supabase."); setLoading(false); return; }
+    if (!supabase) { setMessage("Password recovery is temporarily unavailable. Please try again shortly."); setLoading(false); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password` });
     setMessage(error ? error.message : "Check your email for a secure password reset link."); setLoading(false);
   }

@@ -151,6 +151,7 @@ async function readResource(resource: string) {
       depositCents: row.deposit_cents,
       balanceCents: row.balance_cents,
       paymentStatus: row.payment_status,
+      paymentProvider: row.payment_provider || undefined,
       haircutRequest: row.haircut_request || {},
       productIds: row.product_ids || [],
       notes: row.barber_notes || "",

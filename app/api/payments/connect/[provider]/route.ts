@@ -47,7 +47,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (provider === "stripe") {
     try {
       const stripe = getStripe();
-      if (!stripe) throw new Error("Stripe is not configured for this deployment.");
+      if (!stripe) throw new Error("Stripe setup is temporarily unavailable.");
 
       let account: Stripe.Account | null = null;
       const existingAccountId = existingConnection?.external_account_id || ctx.barber.stripe_account_id || null;

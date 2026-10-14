@@ -1,4 +1,4 @@
-# CutFlow v2.2 Architecture
+# CutFlow v2.3 Architecture
 
 ## 1. Tenant and permissions model
 
@@ -84,7 +84,7 @@ refund synchronization
 
 ### Stripe
 
-- Standard account OAuth
+- Stripe-hosted Account Links for platform-created Standard connected accounts
 - Direct connected-account Checkout
 - No CutFlow application fee
 - Actual payment-method and processor-fee logging

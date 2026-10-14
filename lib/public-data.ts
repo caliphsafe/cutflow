@@ -37,19 +37,28 @@ export async function getPublicBarber(slug: string, options: PublicBarberOptions
     return null;
   }
 
-  const [{ data: serviceRows }, { data: productRows }, { data: connectionRows }] = await Promise.all([
+  const [{ data: serviceRows }, { data: productRows }, { data: connectionRows }, { data: externalRows }] = await Promise.all([
     supabase.from("services").select("id,name,description,duration_minutes,price_cents,category,active,image_url").eq("barber_id", profile.id).eq("active", true).order("sort_order"),
     supabase.from("products").select("id,name,description,price_cents,inventory_quantity,texture_tags,service_tags,pickup_only,active,image_url").eq("barber_id", profile.id).eq("active", true).order("sort_order"),
     admin
       ? admin.from("payment_connections").select("provider,status,charges_enabled").eq("barber_id", profile.id).eq("status", "connected").eq("charges_enabled", true)
       : Promise.resolve({ data: [] as Array<{ provider: string; status: string; charges_enabled: boolean }> }),
+    admin
+      ? admin.from("external_payment_methods").select("provider,label,account_handle,payment_url,enabled").eq("barber_id", profile.id).eq("enabled", true)
+      : Promise.resolve({ data: [] as Array<{ provider: string; label: string; account_handle: string; payment_url: string; enabled: boolean }> }),
   ]);
 
-  const paymentOptions: PaymentOption[] = (connectionRows || []).filter((row) => row.provider === "stripe").map((row) => {
-    const provider = row.provider as PaymentOption["provider"];
-    const details = paymentProviderDetails[provider];
-    return { provider, label: details.label, methods: details.customerMethods };
-  });
+  const paymentOptions: PaymentOption[] = [];
+  // Cash App and Venmo are intentionally shown first. Stripe remains available as an optional card/wallet checkout.
+  for (const providerName of ["cash_app", "venmo"] as const) {
+    const row = (externalRows || []).find((item) => item.provider === providerName);
+    if (!row) continue;
+    paymentOptions.push({ provider: providerName, label: row.label, methods: [providerName === "cash_app" ? "Open Cash App" : "Open Venmo"], accountHandle: row.account_handle || "", paymentUrl: row.payment_url || "", verification: "payment_email" });
+  }
+  for (const row of connectionRows || []) {
+    if (row.provider !== "stripe") continue;
+    paymentOptions.push({ provider: "stripe", label: "Card / wallet", methods: paymentProviderDetails.stripe.customerMethods, verification: "processor" });
+  }
 
   const barber: Barber = {
     id: profile.id,

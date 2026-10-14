@@ -3,6 +3,7 @@
 import { Check, CircleAlert, LoaderCircle, PlugZap, RefreshCcw, ShieldCheck, Unplug, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HelpTip } from "@/components/HelpTip";
+import { ExternalPaymentMethods } from "@/components/payments/ExternalPaymentMethods";
 
 type Connection = {
   provider: "stripe";
@@ -79,13 +80,14 @@ export function PaymentConnections() {
 
   if (!data) return <div className="dashboard-card loading-card"><LoaderCircle className="spin" /> Loading payment setup…</div>;
   const item = data.connections[0];
-  if (!item) return <div className="dashboard-card empty-state"><CircleAlert/><h2>Stripe is not available in this deployment.</h2></div>;
+  if (!item) return <div className="dashboard-card empty-state"><CircleAlert/><h2>Stripe setup is temporarily unavailable.</h2></div>;
   const ready = item.status === "connected" && item.chargesEnabled;
 
   return <>
-    <section className="connections-intro dashboard-card">
-      <div><span className="connection-hero-icon"><WalletCards /></span><div><p className="eyebrow">CUSTOMER PAYMENTS</p><h2>Connect Stripe once. Get paid directly. <HelpTip text="Stripe securely collects the barber’s business, identity and bank details. CutFlow never asks barbers to enter API keys." /></h2><p>Customers can pay booking deposits by card and eligible digital wallets. Payments are processed through the barber’s connected Stripe account.</p></div></div>
-      <ul><li><Check />Customer payments go to the barber’s Stripe account.</li><li><Check />Booking deposits are credited toward the appointment total.</li><li><Check />Stripe’s normal processing fees still apply.</li></ul>
+    <ExternalPaymentMethods />
+    <section className="connections-intro dashboard-card optional-stripe-intro">
+      <div><span className="connection-hero-icon"><WalletCards /></span><div><p className="eyebrow">OPTIONAL CARD PAYMENTS</p><h2>Keep Stripe as an additional way to pay. <HelpTip text="Cash App and Venmo can be your main deposit options. Stripe is available for clients who prefer cards or digital wallets." /></h2><p>Stripe is optional. If you connect it, clients can also pay deposits by card and eligible digital wallets.</p></div></div>
+      <ul><li><Check />Cash App and Venmo can remain your primary deposit methods.</li><li><Check />Stripe gives clients an additional card and wallet option.</li><li><Check />CutFlow does not add a percentage fee to Stripe appointment payments.</li></ul>
     </section>
 
     <section className="connection-grid stripe-only">
@@ -93,13 +95,13 @@ export function PaymentConnections() {
         <header><span className="provider-logo stripe">S</span><div><h3>Stripe</h3><p>{item.description}</p></div><span className={`connection-status ${ready ? "connected" : item.status}`}>{ready ? <ShieldCheck /> : <CircleAlert />}{ready ? "Connected" : item.status.replaceAll("_", " ")}</span></header>
         <div className="method-chip-row">{item.customerMethods.map((method) => <span key={method}>{method}</span>)}</div>
         <dl>
-          <div><dt>Accepting payments <HelpTip text="Yes means customers can complete secure deposit checkout for this barber." /></dt><dd>{item.chargesEnabled ? "Yes" : "Not yet"}</dd></div>
-          <div><dt>Payout ready <HelpTip text="Yes means Stripe has the identity and bank information needed to send the barber’s funds." /></dt><dd>{item.payoutsEnabled ? "Yes" : "Not yet"}</dd></div>
-          <div><dt>Verification <HelpTip text="Requirements due means Stripe needs more business, identity or bank information." /></dt><dd>{item.verificationStatus.replaceAll("_", " ")}</dd></div>
+          <div><dt>Accepting payments <HelpTip text="Yes means customers can pay a deposit when they book." /></dt><dd>{item.chargesEnabled ? "Yes" : "Not yet"}</dd></div>
+          <div><dt>Payout ready <HelpTip text="Yes means Stripe has the information needed to send your payouts." /></dt><dd>{item.payoutsEnabled ? "Yes" : "Not yet"}</dd></div>
+          <div><dt>Verification <HelpTip text="If more information is needed, Stripe will guide you through the remaining steps." /></dt><dd>{item.verificationStatus.replaceAll("_", " ")}</dd></div>
         </dl>
         {item.lastError && <p className="connection-error">{item.lastError}</p>}
         <footer>
-          {!item.environmentReady ? <span className="connection-config-note">Stripe is not configured yet.</span> : !ready ? <button className="button" onClick={connectStripe} disabled={busy === "stripe"}><PlugZap /> {busy === "stripe" ? "Opening Stripe…" : item.externalAccountId ? "Continue Stripe setup" : "Connect Stripe"}</button> : <>
+          {!item.environmentReady ? <span className="connection-config-note">Stripe setup is temporarily unavailable. Please contact CutFlow support.</span> : !ready ? <button className="button" onClick={connectStripe} disabled={busy === "stripe"}><PlugZap /> {busy === "stripe" ? "Opening Stripe…" : item.externalAccountId ? "Continue Stripe setup" : "Connect Stripe"}</button> : <>
             <button className="button secondary" disabled={busy === "stripe"} onClick={() => post("/api/payments/sync/stripe")}><RefreshCcw /> Refresh status</button>
             <button className="button ghost-danger" disabled={busy === "stripe"} onClick={() => confirm("Stop accepting Stripe payments through CutFlow?") && post("/api/payments/disconnect/stripe")}><Unplug /> Disconnect</button>
           </>}

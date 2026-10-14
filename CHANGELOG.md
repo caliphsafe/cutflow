@@ -1,4 +1,23 @@
+# v2.5.0
+
+- Removed developer and infrastructure language from the barber experience.
+- Added customer-message switches and a barber-focused launch guide.
+- Expanded the marketing home page and fixed-price comparison.
+- Added a build guard that protects the $0 CutFlow appointment commission.
+
 # Changelog
+
+## v2.3.0 — Stripe-Hosted Connect Onboarding
+
+- Replaced Standard-account OAuth with Stripe-hosted Account Links
+- Removed the `STRIPE_CONNECT_CLIENT_ID` requirement
+- Added automatic creation and reuse of barber Standard connected accounts
+- Added up-front Stripe requirement collection through single-use onboarding links
+- Added safe return and refresh handling for expired or revisited Account Links
+- Added detailed connected-account requirement, verification, charge and payout status synchronization
+- Changed Stripe disconnect behavior to disable CutFlow checkout without closing the barber's Stripe account
+- Preserved Stripe direct charges with a CutFlow application fee of $0
+- Removed `package-lock.json` from the 43 Build to avoid the user's recurring Vercel npm lockfile failures
 
 ## v2.2.0 — Provider Hardening + Final 43 Build
 

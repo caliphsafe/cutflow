@@ -139,8 +139,8 @@ export function BookingWizard({
   const productTotal = selectedProductData.reduce((sum, product) => sum + product.priceCents, 0);
   const total = (service?.priceCents || 0) + productTotal;
   const deposit = barber.depositCents ?? 1000;
-  const paymentOptions = (barber.paymentOptions?.length ? barber.paymentOptions : [{ provider: "stripe" as const, label: "Secure online payment", methods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"] }]).filter((option) => option.provider === "stripe");
-  const paymentProvider = "stripe" as const;
+  const paymentOptions = barber.paymentOptions?.length ? barber.paymentOptions : [{ provider: "stripe" as const, label: "Secure online payment", methods: ["Cards", "Apple Pay", "Google Pay", "Cash App Pay"], verification: "processor" as const }];
+  const [paymentProvider, setPaymentProvider] = useState<string>(paymentOptions[0]?.provider || "stripe");
   const smsEnabled = process.env.NEXT_PUBLIC_SMS_ENABLED === "true";
   const dueAtShop = Math.max(0, total - deposit);
 
@@ -401,20 +401,20 @@ export function BookingWizard({
               </div>
 
               <div className="payment-method-section">
-                <div className="recommendation-title"><div><span>SECURE PAYMENT</span><h3>Complete your deposit through Stripe.</h3></div><WalletCards size={20} /></div>
-                <div className="payment-option-grid single">
+                <div className="recommendation-title"><div><span>PAYMENT METHOD</span><h3>Choose how you want to pay the deposit.</h3></div><WalletCards size={20} /></div>
+                <div className={paymentOptions.length === 1 ? "payment-option-grid single" : "payment-option-grid"}>
                   {paymentOptions.map((option) => (
-                    <div key={option.provider} className="payment-option selected">
-                      <span className="choice-check"><Check size={14} /></span>
-                      <div><b>{option.label}</b><small>{option.methods.join(" · ")}</small></div>
-                    </div>
+                    <button type="button" key={option.provider} className={paymentProvider === option.provider ? "payment-option selected" : "payment-option"} onClick={() => setPaymentProvider(option.provider)}>
+                      <span className="choice-check">{paymentProvider === option.provider && <Check size={14} />}</span>
+                      <div><b>{option.label}</b><small>{option.methods.join(" · ")}{option.verification === "payment_email" ? " · Automatic booking confirmation" : ""}</small></div>
+                    </button>
                   ))}
                 </div>
               </div>
 
               <div className="deposit-explainer">
                 <CreditCard size={20} />
-                <div><b>{money(deposit)} is charged now to reserve your chair.</b><p>It is automatically deducted from your final appointment total. The remaining {money(dueAtShop)} is due to {barber.displayName} at the shop.</p></div>
+                <div><b>Pay {money(deposit)} now to reserve your chair.</b><p>Your deposit is deducted from the final appointment total. The remaining {money(dueAtShop)} is due to {barber.displayName} at the shop.</p></div>
               </div>
               {error && <p className="form-error">{error}</p>}
             </div>
@@ -425,7 +425,7 @@ export function BookingWizard({
             {step < 5 ? (
               <button className="button" disabled={!canContinue()} onClick={() => setStep((current) => Math.min(5, current + 1))}>Continue <ArrowRight size={17} /></button>
             ) : (
-              <button className="button deposit-button" disabled={submitting} onClick={submitBooking}>{submitting ? "Opening secure checkout…" : `${money(deposit)} deposit & confirm`} <ArrowRight size={17} /></button>
+              <button className="button deposit-button" disabled={submitting} onClick={submitBooking}>{submitting ? "Preparing payment…" : paymentProvider === "cash_app" ? `Continue to Cash App · ${money(deposit)}` : paymentProvider === "venmo" ? `Continue to Venmo · ${money(deposit)}` : `${money(deposit)} deposit & confirm`} <ArrowRight size={17} /></button>
             )}
           </footer>
         </div>

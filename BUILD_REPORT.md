@@ -1,46 +1,24 @@
-# CutFlow v2.2 43 Build Verification
+# CutFlow v2.3 43 Build Verification
 
-Verification completed against a clean copy of the packaged source on July 19, 2026.
+CutFlow v2.3 is based on the previously verified v2.2 Production Core and replaces only the Stripe connection/onboarding layer plus related documentation.
 
-## Automated checks
+## v2.3 checks completed
 
-- Clean `npm ci` install from the public npm registry: passed
-- TypeScript `tsc --noEmit`: passed
-- Next.js 16 production build: passed
-- App Router entries: 25 pages and 24 API/route handlers
-- Static page generation: 40 pages generated successfully
-- Production dependency audit from the installed lockfile/cache: 0 known vulnerabilities
+- Parsed and transpiled 93 TypeScript/TSX source files successfully with TypeScript 5.8
+- Verified the Stripe Account Link request against Stripe's current `account_onboarding`, `refresh_url`, `return_url` and `collection_options.fields` contract
+- Verified the Standard connected-account creation pattern against Stripe's current Standard-account documentation
+- Removed all runtime references to `STRIPE_CONNECT_CLIENT_ID`
+- Preserved the existing direct-charge checkout path and connected-account webhook path
+- Preserved all Square, PayPal, booking, media, tutorial, customer portal, reporting, subscription and notification files
+- Confirmed no Supabase schema change is required for an upgrade from v2.2
+- Confirmed the final package contains no `node_modules`, `.next`, local environment files or `package-lock.json`
 
-## Production-server smoke tests
+## Baseline verification inherited from v2.2
 
-The optimized build was started with `next start`. These routes returned HTTP 200:
+Before the Stripe onboarding conversion, the v2.2 Production Core passed TypeScript checking, a Next.js production build, static route generation, route smoke tests and a production dependency audit.
 
-- Landing page
-- Demo barber storefront
-- Smart booking engine
-- Dashboard overview
-- Bookings
-- Clients
-- Payment connections
-- Payments ledger
-- Media manager
-- Booking policies
-- Products
-- Reports
-- Services
-- Settings
-- Storefront editor
-- Subscription billing page
-- Onboarding
-- Login
-- Signup
-- Forgot password
-- Reset password
+## Verification that still requires your deployment
 
-The demo availability API returned HTTP 200 with valid appointment slots.
+This environment could not resolve `registry.npmjs.org`, so the dependency installation and optimized Next.js build could not be repeated after the v2.3 source change. Vercel must perform the final dependency install and production compilation after upload.
 
-## Important external verification still required
-
-The Supabase SQL files were reviewed and packaged, but they were not run against the user's hosted Supabase project from this build environment. Stripe, Square, PayPal, Resend and Twilio live flows also require the user's own platform accounts, credentials, approvals and sandbox/live testing.
-
-For an existing CutFlow v1 database, run `supabase/upgrade-v2.sql`, then `supabase/cron.sql`, then `supabase/verify-install.sql`. Do not run the fresh-install schema over an existing database.
+The live Stripe flow also requires your own live Stripe account, Connect activation, webhook signing secrets and one barber onboarding/payment check. Returning from Stripe is not treated as proof of completion; CutFlow retrieves the connected account and checks its actual charge, payout and requirement status.

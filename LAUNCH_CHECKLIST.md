@@ -1,4 +1,4 @@
-# CutFlow v2.2 Launch Checklist
+# CutFlow v2.3 Launch Checklist
 
 ## Database, authentication and storage
 
@@ -20,7 +20,7 @@
 - [ ] Platform subscription webhook verifies correctly
 - [ ] Trial/active subscription grants dashboard access
 - [ ] Expired/cancelled subscription redirects to Subscription
-- [ ] Stripe Connect OAuth is enabled
+- [ ] Stripe Connect platform profile is complete and live connected-account onboarding is available
 - [ ] Redirect URI matches `/api/payments/connect/stripe/callback`
 - [ ] Connected-account webhook receives `checkout.session.completed`, `account.updated`, `account.application.deauthorized` and `charge.refunded`
 - [ ] Revoking CutFlow in Stripe disables that connection in CutFlow

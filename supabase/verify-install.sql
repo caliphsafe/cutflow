@@ -1,4 +1,4 @@
--- CutFlow v2.2 installation verification
+-- CutFlow v2.3 installation verification
 -- Fresh project: run after schema.sql and cron.sql.
 -- Existing v1 project: run after upgrade-v2.sql and cron.sql.
 

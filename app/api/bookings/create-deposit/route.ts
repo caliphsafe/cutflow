@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   let createdBookingId: string | null = null;
   try {
     const body = await request.json();
-    const { barberSlug, serviceId, selectedDate, selectedTime, customer, haircutRequest, productIds = [] } = body;
+    const { barberSlug, serviceId, selectedDate, selectedTime, customer, haircutRequest, productIds = [], paymentProvider = "stripe" } = body;
 
     if (!barberSlug || !serviceId || !selectedDate || !selectedTime || !customer?.name || !customer?.email || !customer?.phone) {
       return NextResponse.json({ error: "Complete the customer, service, date and time before checkout." }, { status: 400 });
@@ -87,11 +87,17 @@ export async function POST(request: Request) {
     const balanceCents = Math.max(0, totalCents - depositCents);
     let bookingId = code;
 
-    const provider = "stripe" as const;
+    const provider = String(paymentProvider || "stripe");
+    const externalProviders = ["cash_app", "venmo"];
+    if (provider !== "stripe" && !externalProviders.includes(provider)) return NextResponse.json({ error: "Choose an available payment method." }, { status: 400 });
 
     if (admin) {
-      const connection = await getPaymentConnection(barber.id, provider);
-      if (!connection?.charges_enabled) return NextResponse.json({ error: "Stripe checkout is not currently ready for this barber. Please contact the barber directly." }, { status: 400 });
+      const connection = provider === "stripe" ? await getPaymentConnection(barber.id, "stripe") : null;
+      if (provider === "stripe" && !connection?.charges_enabled) return NextResponse.json({ error: "Secure card checkout is not currently ready for this barber. Please contact the barber directly." }, { status: 400 });
+      const { data: externalMethod } = provider !== "stripe"
+        ? await admin.from("external_payment_methods").select("id,provider,label,account_handle,payment_url,enabled").eq("barber_id", barber.id).eq("provider", provider).eq("enabled", true).maybeSingle()
+        : { data: null };
+      if (provider !== "stripe" && !externalMethod) return NextResponse.json({ error: "That payment option is not currently available." }, { status: 400 });
 
       const { data: client, error: clientError } = await admin.from("clients").upsert({
         barber_id: barber.id,
@@ -120,7 +126,7 @@ export async function POST(request: Request) {
         duration_minutes: service.durationMinutes,
         status: "pending_deposit",
         payment_status: "deposit_due",
-        payment_provider: provider,
+        payment_provider: provider === "stripe" ? "stripe" : "external",
         service_total_cents: service.priceCents,
         product_total_cents: productTotalCents,
         total_cents: totalCents,
@@ -131,7 +137,7 @@ export async function POST(request: Request) {
         customer_name: customer.name,
         customer_email: customer.email.toLowerCase(),
         customer_phone: customer.phone,
-        deposit_expires_at: new Date(Date.now() + 15 * 60000).toISOString(),
+        deposit_expires_at: new Date(Date.now() + (provider === "stripe" ? 15 : 20) * 60000).toISOString(),
       }).select("id").single();
       if (bookingError) {
         if (bookingError.code === "23P01") return NextResponse.json({ error: "That time was just reserved by another client. Choose another opening." }, { status: 409 });
@@ -146,12 +152,28 @@ export async function POST(request: Request) {
         if (reservationError) throw new Error("A pickup product just sold out. Remove it or choose another product.");
       }
 
-      const idempotencyKey = `${booking.id}-${provider}-deposit`;
+      if (provider !== "stripe" && externalMethod) {
+        const { error: intentError } = await admin.from("external_payment_intents").insert({
+          barber_id: barber.id,
+          booking_id: booking.id,
+          payment_method_id: externalMethod.id,
+          provider,
+          booking_code: code,
+          amount_cents: depositCents,
+          manage_url: manageUrl,
+          status: "pending",
+          expires_at: new Date(Date.now() + 20 * 60000).toISOString(),
+        });
+        if (intentError) throw intentError;
+        return NextResponse.json({ url: `${appUrl()}/pay/${encodeURIComponent(portalToken)}`, provider, external: true });
+      }
+
+      const idempotencyKey = `${booking.id}-stripe-deposit`;
       const { data: paymentSession, error: sessionError } = await admin.from("payment_sessions").insert({
         barber_id: barber.id,
         client_id: client.id,
         booking_id: booking.id,
-        provider,
+        provider: "stripe",
         purpose: "deposit",
         amount_cents: depositCents,
         status: "created",
@@ -161,7 +183,8 @@ export async function POST(request: Request) {
       }).select("id").single();
       if (sessionError) throw sessionError;
 
-      const result = await createProviderCheckout(provider, connection, {
+      if (!connection) throw new Error("Stripe is not connected.");
+      const result = await createProviderCheckout("stripe", connection, {
         barberId: barber.id,
         bookingId: booking.id,
         paymentSessionId: paymentSession.id,
@@ -174,12 +197,12 @@ export async function POST(request: Request) {
         amountCents: depositCents,
         purpose: "deposit",
         portalToken,
-        successUrl: `${appUrl()}/booking/success?booking=${encodeURIComponent(code)}&provider=${provider}&portal_token=${encodeURIComponent(portalToken)}${provider === "stripe" ? "&session_id={CHECKOUT_SESSION_ID}" : ""}`,
+        successUrl: `${appUrl()}/booking/success?booking=${encodeURIComponent(code)}&provider=stripe&portal_token=${encodeURIComponent(portalToken)}&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${appUrl()}/book/${encodeURIComponent(barber.slug)}?cancelled=1`,
       });
       await admin.from("payment_sessions").update({ external_session_id: result.externalSessionId, external_order_id: result.externalOrderId || null, status: "pending" }).eq("id", paymentSession.id);
-      await admin.from("bookings").update({ external_payment_session_id: result.externalSessionId, stripe_checkout_session_id: provider === "stripe" ? result.externalSessionId : null }).eq("id", booking.id);
-      return NextResponse.json({ url: result.url, provider });
+      await admin.from("bookings").update({ external_payment_session_id: result.externalSessionId, stripe_checkout_session_id: result.externalSessionId }).eq("id", booking.id);
+      return NextResponse.json({ url: result.url, provider: "stripe" });
     }
 
     return NextResponse.json({ url: `${appUrl()}/booking/success?booking=${encodeURIComponent(code)}&demo=1&portal_token=${portalToken}`, demo: true });

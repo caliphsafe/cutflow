@@ -1,4 +1,4 @@
-# CutFlow v2.2 Production Setup Guide
+# CutFlow v2.3 Production Setup Guide
 
 This guide uses the Supabase, GitHub, Vercel, Stripe, Square, PayPal, Resend and Twilio browser dashboards. Barbers never handle platform API keys. Only the CutFlow platform owner performs this setup.
 
@@ -87,7 +87,7 @@ After setup, open **Storage** and confirm that `cutflow-media` exists.
 
 # 3. Upload to GitHub
 
-1. Unzip the CutFlow v2.2 ZIP.
+1. Unzip the CutFlow v2.3 ZIP.
 2. Open the folder containing `package.json`, `app`, `components`, `lib` and `supabase`.
 3. Create or open the GitHub repository.
 4. Upload the **contents inside** the project folder, not an extra parent folder.
@@ -183,57 +183,86 @@ Enable the Stripe customer billing portal in Stripe Billing settings.
 
 ---
 
-# 6. Configure Stripe Connect for barbers
+# 6. Configure Stripe-hosted Connect onboarding for barbers
 
-Stripe is the recommended first provider because it can offer cards, Apple Pay, Google Pay and Cash App Pay when those methods are enabled and eligible.
+Stripe is the recommended first provider because one connected Stripe account can offer cards, Apple Pay, Google Pay, Link and Cash App Pay when those methods are enabled and eligible.
+
+CutFlow v2.3 does **not** use Stripe Connect OAuth and does **not** need a `STRIPE_CONNECT_CLIENT_ID`.
+
+## What CutFlow does
+
+When a barber presses **Dashboard → Connections → Connect Stripe**, CutFlow:
+
+1. Creates a Standard connected Stripe account for that barber, or reuses the account already stored for that barber.
+2. Creates a short-lived, single-use Stripe Account Link.
+3. Redirects the barber to Stripe's hosted onboarding page.
+4. Lets Stripe collect business, identity, tax and payout-bank information.
+5. Returns the barber to CutFlow.
+6. Retrieves the connected account and checks `charges_enabled`, `payouts_enabled`, `details_submitted` and outstanding requirements.
+
+The barber never sees or enters an API key.
 
 ## Platform setup
 
-1. Open Stripe Connect and complete the CutFlow platform profile.
-2. Enable Standard account OAuth.
-3. Add this redirect URI:
+1. Use your main live CutFlow Stripe account.
+2. Complete any **Activate payments**, business verification and Connect platform-profile requirements shown by Stripe.
+3. Add your live platform secret key to Vercel:
 
 ```text
-https://YOUR-CUTFLOW-DOMAIN.com/api/payments/connect/stripe/callback
+STRIPE_SECRET_KEY=sk_live_...
 ```
 
-4. Copy the Connect client ID beginning with `ca_`.
-5. Add:
+4. Keep the optional country setting as:
 
 ```text
-STRIPE_CONNECT_CLIENT_ID=ca_...
+STRIPE_CONNECTED_ACCOUNT_COUNTRY=US
 ```
+
+This locks newly created connected accounts to the United States. Remove the value or leave it blank only if CutFlow will support barbers in other Stripe-supported countries and you have reviewed the onboarding behavior for those countries.
+
+There is no OAuth redirect URL to register and no `ca_...` client ID to copy.
 
 ## Connected-account webhook
 
-Create a webhook for **events on connected accounts** using the same endpoint:
+Create a Stripe event destination for **Connected accounts** using:
 
 ```text
 https://YOUR-CUTFLOW-DOMAIN.com/api/stripe/webhook
 ```
 
-Select:
+Use full/snapshot event payloads and select:
 
 ```text
 checkout.session.completed
 account.updated
-account.application.deauthorized
 charge.refunded
 ```
 
-Copy its separate signing secret into:
+Copy that destination's signing secret into Vercel:
 
 ```text
 STRIPE_CONNECT_WEBHOOK_SECRET=whsec_...
 ```
 
-## Enable payment methods
+The platform subscription webhook remains separate and uses:
 
-In Stripe's payment-method settings for connected accounts, enable the methods CutFlow should offer, including Cash App Pay where available. Stripe decides eligibility based on the account, customer, currency and other provider rules.
+```text
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Both Stripe destinations can point to the same CutFlow URL because the route checks both signing secrets.
+
+## Enable customer payment methods
+
+In Stripe's payment-method settings for connected accounts, enable the methods CutFlow should offer, including Cash App Pay where available. Stripe determines which eligible methods appear based on the connected account, country, currency, transaction and customer device.
 
 ## Barber experience
 
-The barber uses **Dashboard → Connections → Connect Stripe**, signs into Stripe or creates an account, completes Stripe's hosted identity/bank steps, and returns to CutFlow. No API key is shown to the barber.
+The barber presses **Connect Stripe**, completes Stripe's hosted form and returns to CutFlow. If information is still missing, the button changes to **Continue Stripe setup** and creates a fresh one-time onboarding link. Once Stripe reports that charges are enabled, CutFlow can create customer checkout sessions directly on that barber's account.
+
+## Stopping Stripe in CutFlow
+
+The dashboard's **Stop using Stripe** action disables Stripe checkout inside CutFlow but does not close the barber's Stripe account. The barber can reconnect later and continue onboarding or resume using the same connected account.
 
 ---
 

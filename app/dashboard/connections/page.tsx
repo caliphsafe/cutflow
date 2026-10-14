@@ -1,2 +1,2 @@
 import { PaymentConnections } from "@/components/payments/PaymentConnections";
-export default function ConnectionsPage(){return <div className="dashboard-page connections-page"><header className="page-header"><div><p className="eyebrow">PAYMENT SERVICES</p><h1>Connections</h1><p>Connect Stripe securely to accept customer deposits and online balances.</p></div></header><PaymentConnections/></div>}
+export default function ConnectionsPage(){return <div className="dashboard-page connections-page"><header className="page-header"><div><p className="eyebrow">GET PAID</p><h1>Payment methods</h1><p>Connect Cash App and Venmo for booking deposits. Keep Stripe available as an optional card and wallet choice.</p></div></header><PaymentConnections/></div>}
