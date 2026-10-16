@@ -40,10 +40,10 @@ export function LaunchReadiness() {
     if (!setup) return [];
     const messagesReady = Boolean(notifications.customer_confirmation_email && notifications.barber_new_booking_email);
     return [
-      { id: "storefront", label: "Storefront and photos", note: "Show customers who you are, what you offer and what your work looks like.", href: "/dashboard/storefront", ready: setup.steps.profile && setup.steps.media, action: "Edit storefront" },
+      { id: "storefront", label: "Storefront identity", note: "Add a barber portrait or brand logo; cover, shop and gallery photos are optional.", href: "/dashboard/storefront", ready: setup.steps.profile && setup.steps.media, action: "Edit storefront" },
       { id: "services", label: "Services and pricing", note: "Add the appointments customers can book, including price and duration.", href: "/dashboard/services", ready: setup.steps.services, action: "Manage services" },
       { id: "availability", label: "Hours and availability", note: "Choose when customers can see and reserve open appointment times.", href: "/dashboard/settings#availability", ready: setup.steps.availability, action: "Set hours" },
-      { id: "payments", label: "Customer payments", note: "Connect Stripe so deposits and balances are paid to your Stripe account.", href: "/dashboard/connections", ready: setup.steps.payments, action: "Open payments" },
+      { id: "payments", label: "Customer payments", note: "Enable Cash App or Venmo, or connect a payment processor. Any active method meets the storefront requirement.", href: "/dashboard/connections", ready: setup.steps.payments, action: "Open payments" },
       { id: "subscription", label: "CutFlow plan", note: "Keep your workspace, booking page and business tools active.", href: "/dashboard/subscription", ready: setup.steps.subscription, action: "Manage plan" },
       { id: "messages", label: "Customer messages", note: "Choose confirmation emails, reminders and your own new-booking alerts.", href: "/dashboard/policies#notifications", ready: messagesReady, action: "Choose messages" },
     ];

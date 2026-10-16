@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Images, LoaderCircle, Plus, Save, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MediaUploader } from "@/components/MediaUploader";
@@ -37,7 +38,7 @@ export default function MediaPage() {
     const payload = await response.json();
     if (response.ok && payload.data) {
       setProfile((current) => ({ ...current, ...payload.data, galleryImageUrls: payload.data.galleryImageUrls || [] }));
-      setNotice("Photos saved and published to the customer experience.");
+      setNotice("Photos saved.");
     } else setNotice(payload.error || "Photos could not be saved.");
     setSaving(false);
   }
@@ -50,29 +51,35 @@ export default function MediaPage() {
 
   return <div className="dashboard-page media-page">
     <header className="page-header">
-      <div><p className="eyebrow">CUSTOMER-FACING PHOTOGRAPHY</p><h1>Photos & media</h1><p>Manage every barber and shop image used across the public booking experience.</p></div>
+      <div><p className="eyebrow">CUSTOMER-FACING PHOTOGRAPHY</p><h1>Photos & media</h1><p>Add a barber portrait or brand logo to publish. Every other image is optional.</p></div>
       <div className="page-actions"><button className="button" onClick={save} disabled={saving || !profile.id}><Save/>{saving ? "Saving…" : "Save all photos"}</button></div>
     </header>
 
     {notice && <div className={notice.includes("saved") ? "inline-notice success" : "inline-notice error"}>{notice}</div>}
 
     <section className="dashboard-card media-guide-card">
-      <span><Sparkles/></span><div><p className="eyebrow">IMAGE GUIDE</p><h2>Use real photography to build trust before the appointment.</h2><p>CutFlow automatically uses uploaded images on mobile and desktop. Empty image areas keep a polished fallback until a photo is added.</p></div>
-      <ul><li>Use bright, sharp photos without text overlays.</li><li>Keep the barber portrait centered and easy to recognize.</li><li>Show the shop as customers will experience it.</li></ul>
+      <span><Sparkles/></span><div><p className="eyebrow">IMAGE GUIDE</p><h2>Choose one identity image; the rest are optional.</h2><p>A barber portrait or brand logo meets the storefront image requirement. Add covers, shop photos, gallery, service and product images whenever you like.</p></div>
+      <ul><li>Use bright, sharp photos without text overlays.</li><li>Keep the portrait or logo easy to recognize.</li><li>Cover, shop, gallery, service and product images are optional.</li></ul>
     </section>
 
     <section className="dashboard-card media-section">
-      <header><div><span><Images/></span><div><h2>Barber and shop identity</h2><p>These images appear in the hero, about section, browser previews and dashboard profile.</p></div></div><HelpTip text="Upload the strongest images first. You can replace any image later without changing the public booking link."/></header>
+      <header><div><span><Images/></span><div><h2>Storefront identity</h2><p>Required to publish: add a barber portrait or brand logo. Either one is enough; uploading both is optional.</p></div></div><HelpTip text="A barber portrait or brand logo is the only required image. You can add or replace either one later."/></header>
       <div className="media-grid">
-        <MediaUploader barberId={profile.id} label="Barber portrait" help="A vertical or square portrait used as the primary image of the barber." folder="profile" aspect="portrait" value={profile.profileImageUrl} onChange={(profileImageUrl) => setProfile({ ...profile, profileImageUrl })}/>
-        <MediaUploader barberId={profile.id} label="Storefront cover" help="A wide image displayed behind the main customer-facing headline." folder="cover" aspect="landscape" value={profile.coverImageUrl} onChange={(coverImageUrl) => setProfile({ ...profile, coverImageUrl })}/>
-        <MediaUploader barberId={profile.id} label="Shop interior" help="A photo that helps customers recognize the location and atmosphere." folder="shop" aspect="landscape" value={profile.shopImageUrl} onChange={(shopImageUrl) => setProfile({ ...profile, shopImageUrl })}/>
-        <MediaUploader barberId={profile.id} label="Logo or mark" help="A square logo used where a compact brand mark is more appropriate than a portrait." folder="logo" aspect="square" value={profile.logoImageUrl} onChange={(logoImageUrl) => setProfile({ ...profile, logoImageUrl })}/>
+        <MediaUploader barberId={profile.id} label="Barber portrait" help="A vertical or square barber photo. Required only if you do not upload a brand logo." folder="profile" aspect="portrait" value={profile.profileImageUrl} onChange={(profileImageUrl) => setProfile({ ...profile, profileImageUrl })}/>
+        <MediaUploader barberId={profile.id} label="Brand logo" help="A square logo or mark. Required only if you do not upload a barber portrait." folder="logo" aspect="square" value={profile.logoImageUrl} onChange={(logoImageUrl) => setProfile({ ...profile, logoImageUrl })}/>
       </div>
     </section>
 
     <section className="dashboard-card media-section">
-      <header><div><span><Images/></span><div><h2>Work gallery</h2><p>Add up to eight examples of cuts, styling, detail work or the shop environment.</p></div></div><button className="button secondary" disabled={profile.galleryImageUrls.length >= 8} onClick={() => setProfile((current) => ({ ...current, galleryImageUrls: [...current.galleryImageUrls, ""] }))}><Plus/> Add gallery image</button></header>
+      <header><div><span><Images/></span><div><h2>Optional storefront photos</h2><p>Add a cover and shop interior to show the space. Neither is required to publish.</p></div></div><HelpTip text="Storefront cover and shop interior photos are optional and can be added whenever you have them."/></header>
+      <div className="media-grid">
+        <MediaUploader barberId={profile.id} label="Storefront cover" help="A wide image displayed behind the main customer-facing headline. Optional." folder="cover" aspect="landscape" value={profile.coverImageUrl} onChange={(coverImageUrl) => setProfile({ ...profile, coverImageUrl })}/>
+        <MediaUploader barberId={profile.id} label="Shop interior" help="A photo that helps customers recognize the location and atmosphere. Optional." folder="shop" aspect="landscape" value={profile.shopImageUrl} onChange={(shopImageUrl) => setProfile({ ...profile, shopImageUrl })}/>
+      </div>
+    </section>
+
+    <section className="dashboard-card media-section">
+      <header><div><span><Images/></span><div><h2>Optional work gallery</h2><p>Add up to eight examples of cuts, styling, detail work or the shop environment. Gallery images are optional.</p></div></div><button className="button secondary" disabled={profile.galleryImageUrls.length >= 8} onClick={() => setProfile((current) => ({ ...current, galleryImageUrls: [...current.galleryImageUrls, ""] }))}><Plus/> Add gallery image</button></header>
       <div className="gallery-admin-grid">
         {profile.galleryImageUrls.map((url, index) => <div className="gallery-admin-item" key={`${index}-${url}`}>
           <MediaUploader barberId={profile.id} label={`Gallery image ${index + 1}`} help="Use finished cuts and details that represent the quality customers can expect." folder="gallery" aspect="square" value={url} onChange={(next) => updateGallery(index, next)}/>
@@ -82,6 +89,6 @@ export default function MediaPage() {
       </div>
     </section>
 
-    <section className="dashboard-card media-next-card"><div><b>Service and product photography</b><p>Upload individual service images inside Services and product package photos inside Products. Those images are used in the booking flow and recommendation cards.</p></div><span>Dashboard → Services / Products</span></section>
+    <section className="dashboard-card media-next-card"><div><b>Optional service and product photos</b><p>Add service examples or product package photos where you manage those items. These images are optional and appear in booking and recommendation cards.</p></div><div className="media-next-actions"><Link className="button secondary" href="/dashboard/services">Manage service photos</Link><Link className="button secondary" href="/dashboard/products">Manage product photos</Link></div></section>
   </div>;
 }

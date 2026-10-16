@@ -14,8 +14,8 @@ const businessTools = [
   {
     id: "stripe",
     eyebrow: "CUSTOMER PAYMENTS",
-    title: "Accept deposits and balances",
-    copy: "Connect your Stripe account once. Customers can pay securely, and the money is processed through your Stripe account without a CutFlow booking commission.",
+    title: "Choose how customers pay",
+    copy: "Enable Cash App or Venmo for direct payments, or connect Stripe for card and wallet payments. Any active payment method is accepted for storefront readiness; CutFlow adds no booking commission.",
     href: "/dashboard/connections",
     action: "Open payment setup",
     icon: CreditCard,

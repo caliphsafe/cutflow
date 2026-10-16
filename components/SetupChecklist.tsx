@@ -11,10 +11,10 @@ export type SetupStatus = {
 
 const rows = [
   ["profile", "Complete shop profile", "/dashboard/storefront"],
-  ["media", "Add barber and shop photos", "/dashboard/media"],
+  ["media", "Add barber photo or brand logo", "/dashboard/media"],
   ["services", "Add at least one service", "/dashboard/services"],
   ["availability", "Set weekly availability", "/dashboard/settings"],
-  ["payments", "Connect Stripe", "/dashboard/connections"],
+  ["payments", "Set up a payment method", "/dashboard/connections"],
   ["subscription", "Activate CutFlow subscription", "/dashboard/subscription"],
 ] as const;
 

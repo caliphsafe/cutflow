@@ -9,10 +9,11 @@
 - [ ] Forgot-password and reset-password flows work
 - [ ] Service-role key exists only in Vercel server variables
 - [ ] `cutflow-media` bucket exists
-- [ ] Barber can upload portrait, cover/shop, gallery, service and product images
+- [ ] Barber can upload portrait, logo, cover/shop, gallery, service and product images
+- [ ] Storefront image readiness passes with only a barber portrait or brand logo
 - [ ] Another user cannot modify that barber's media or data
 
-## Stripe subscription and Connect
+## Stripe subscription and optional barber card payments
 
 - [ ] Stripe Checkout shows CutFlow Complete at $20/month with its 14-day trial
 - [ ] Stripe test secret is in Vercel
@@ -20,12 +21,12 @@
 - [ ] Platform subscription webhook verifies correctly
 - [ ] Trial/active subscription grants dashboard access
 - [ ] Expired/cancelled subscription redirects to Subscription
-- [ ] Stripe Connect platform profile is complete and live connected-account onboarding is available
+- [ ] If offering card payments, Stripe Connect profile is complete and live connected-account onboarding is available
 - [ ] Redirect URI matches `/api/payments/connect/stripe/callback`
 - [ ] Connected-account webhook receives `checkout.session.completed`, `account.updated`, `account.application.deauthorized` and `charge.refunded`
 - [ ] Revoking CutFlow in Stripe disables that connection in CutFlow
 - [ ] Cash App Pay and wallets are enabled where eligible
-- [ ] Test barber can sign in, connect, receive a deposit and view the payment in Stripe
+- [ ] Verify a barber can publish with Cash App, Venmo or an active connected payment processor and test the selected deposit flow
 
 ## Square
 

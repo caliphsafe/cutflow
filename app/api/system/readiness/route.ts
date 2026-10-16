@@ -9,7 +9,7 @@ export async function GET() {
   }
 
   const admin = createAdminSupabaseClient();
-  const [{ data: services }, { data: connection }] = admin
+  const [{ data: services }, { data: connections }, { data: externalPaymentMethods }] = admin
     ? await Promise.all([
         admin
           .from("services")
@@ -19,26 +19,30 @@ export async function GET() {
           .limit(1),
         admin
           .from("payment_connections")
-          .select("charges_enabled")
+          .select("id")
           .eq("barber_id", ctx.barber.id)
-          .eq("provider", "stripe")
-          .maybeSingle(),
+          .eq("status", "connected")
+          .eq("charges_enabled", true),
+        admin
+          .from("external_payment_methods")
+          .select("id")
+          .eq("barber_id", ctx.barber.id)
+          .eq("enabled", true),
       ])
-    : [{ data: [] }, { data: null }];
+    : [{ data: [] }, { data: [] }, { data: [] }];
 
   const profileReady = Boolean(
     ctx.barber.display_name && ctx.barber.shop_name && ctx.barber.slug,
   );
   const mediaReady = Boolean(
     ctx.barber.profile_image_url ||
-      ctx.barber.cover_image_url ||
       ctx.barber.logo_image_url,
   );
   const servicesReady = Boolean(services?.length);
   const hoursReady = Boolean(
     ctx.barber.availability || ctx.barber.weekly_availability,
   );
-  const paymentsReady = Boolean(connection?.charges_enabled);
+  const paymentsReady = Boolean(connections?.length || externalPaymentMethods?.length);
   const subscriptionReady = ["active", "trialing"].includes(
     String(ctx.subscription?.status || ""),
   );
@@ -56,7 +60,7 @@ export async function GET() {
       id: "photos",
       label: "Photos and branding",
       ready: mediaReady,
-      note: "Portrait, cover, logo and work images",
+      note: "A barber portrait or brand logo. Other storefront photos are optional.",
       href: "/dashboard/media",
       action: "Manage photos",
     },
@@ -80,7 +84,7 @@ export async function GET() {
       id: "payments",
       label: "Customer payments",
       ready: paymentsReady,
-      note: "Stripe deposits paid directly to your connected account",
+      note: "Enable Cash App or Venmo, or connect a card processor.",
       href: "/dashboard/connections",
       action: "Review payments",
     },

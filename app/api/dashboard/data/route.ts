@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { bookings as demoBookings, customers as demoClients, demoBarber, products as demoProducts, services as demoServices, transactions as demoTransactions, availability as demoAvailability } from "@/lib/demo-data";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const phoneDigits = (value: string) => String(value || "").replace(/\D/g, "");
+
+async function countEnabledExternalPaymentMethods(barberId: string) {
+  const admin = createAdminSupabaseClient();
+  if (!admin) return 0;
+  const { count, error } = await admin.from("external_payment_methods").select("id", { count: "exact", head: true }).eq("barber_id", barberId).eq("enabled", true);
+  if (error) throw error;
+  return Number(count || 0);
+}
 
 function demoPayload(resource: string) {
   const values: Record<string, unknown> = {
@@ -52,20 +61,21 @@ async function readResource(resource: string) {
   }
 
   if (resource === "setup") {
-    const [{ count: servicesCount }, { count: availabilityCount }, { count: connectionsCount }, { data: subscription }] = await Promise.all([
+    const [{ count: servicesCount }, { count: availabilityCount }, { count: connectionsCount }, externalPaymentMethodsCount, { data: subscription }] = await Promise.all([
       supabase.from("services").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("active", true),
       supabase.from("availability_rules").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("active", true),
       supabase.from("payment_connections").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("status", "connected").eq("charges_enabled", true),
+      countEnabledExternalPaymentMethods(barber.id),
       supabase.from("subscriptions").select("status,trial_ends_at,current_period_end").eq("owner_user_id", barber.owner_user_id).maybeSingle(),
     ]);
     const status = subscription?.status || "";
     const subscriptionReady = status === "active" || (status === "trialing" && (!subscription?.trial_ends_at || new Date(subscription.trial_ends_at).getTime() > Date.now())) || (status === "past_due" && Boolean(subscription?.current_period_end) && new Date(subscription!.current_period_end!).getTime() > Date.now());
     const steps = {
       profile: Boolean(barber.display_name && barber.slug && barber.email),
-      media: Boolean(barber.profile_image_url && (barber.cover_image_url || barber.shop_image_url)),
+      media: Boolean(barber.profile_image_url || barber.logo_image_url),
       services: Number(servicesCount || 0) > 0,
       availability: Number(availabilityCount || 0) > 0,
-      payments: Number(connectionsCount || 0) > 0,
+      payments: Number(connectionsCount || 0) > 0 || externalPaymentMethodsCount > 0,
       subscription: subscriptionReady,
     };
     return { data: { steps, ready: Object.values(steps).every(Boolean), published: Boolean(barber.storefront_published) }, demo: false };
@@ -258,16 +268,17 @@ export async function POST(request: Request) {
       let publish = item.storefrontPublished ?? barber.storefront_published;
       let setupCompletedAt = barber.setup_completed_at;
       if (publish) {
-        const [{ count: servicesCount }, { count: availabilityCount }, { count: connectionsCount }, { data: subscription }] = await Promise.all([
+        const [{ count: servicesCount }, { count: availabilityCount }, { count: connectionsCount }, externalPaymentMethodsCount, { data: subscription }] = await Promise.all([
           supabase.from("services").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("active", true),
           supabase.from("availability_rules").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("active", true),
           supabase.from("payment_connections").select("id", { count: "exact", head: true }).eq("barber_id", barber.id).eq("status", "connected").eq("charges_enabled", true),
+          countEnabledExternalPaymentMethods(barber.id),
           supabase.from("subscriptions").select("status,trial_ends_at,current_period_end").eq("owner_user_id", barber.owner_user_id).maybeSingle(),
         ]);
         const subscriptionStatus = subscription?.status || "";
         const subscriptionReady = subscriptionStatus === "active" || (subscriptionStatus === "trialing" && (!subscription?.trial_ends_at || new Date(subscription.trial_ends_at).getTime() > Date.now())) || (subscriptionStatus === "past_due" && Boolean(subscription?.current_period_end) && new Date(subscription!.current_period_end!).getTime() > Date.now());
-        if (!barber.profile_image_url || !(barber.cover_image_url || barber.shop_image_url) || !servicesCount || !availabilityCount || !connectionsCount || !subscriptionReady) {
-          return NextResponse.json({ error: "Complete photos, services, availability, subscription and a payment connection before publishing." }, { status: 400 });
+        if ((!barber.profile_image_url && !barber.logo_image_url) || !servicesCount || !availabilityCount || (!connectionsCount && !externalPaymentMethodsCount) || !subscriptionReady) {
+          return NextResponse.json({ error: "Add a barber portrait or brand logo, at least one service, weekly availability, a valid CutFlow plan or trial and one active payment method before publishing." }, { status: 400 });
         }
         setupCompletedAt = setupCompletedAt || new Date().toISOString();
       }
