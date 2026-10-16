@@ -14,8 +14,8 @@
 
 ## Stripe subscription and Connect
 
-- [ ] CutFlow Complete $69 monthly recurring price exists
-- [ ] Stripe test secret and price IDs are in Vercel
+- [ ] Stripe Checkout shows CutFlow Complete at $20/month with its 14-day trial
+- [ ] Stripe test secret is in Vercel
 - [ ] Billing portal is enabled
 - [ ] Platform subscription webhook verifies correctly
 - [ ] Trial/active subscription grants dashboard access

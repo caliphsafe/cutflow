@@ -142,20 +142,17 @@ Every Vercel environment-variable change requires a new deployment.
 
 Appointment payments belong to barbers. CutFlow's monthly subscription belongs to the CutFlow platform Stripe account.
 
-## Create recurring prices
+## Checkout pricing
 
-Create one monthly recurring price:
-
-- CutFlow Complete — `$69/month`
+CutFlow Checkout sets the CutFlow Complete subscription to `$20/month` and includes a 14-day trial. The app creates this recurring price in the Checkout session, so a separate Stripe Price ID is not required.
 
 Add:
 
 ```text
 STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PRICE_PRO=price_...
 ```
 
-The application creates a 14-day trial through Stripe Checkout and enforces subscription/trial status on protected dashboard routes.
+The application enforces subscription/trial status on protected dashboard routes.
 
 ## Platform webhook
 

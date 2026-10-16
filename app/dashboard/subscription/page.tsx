@@ -2,12 +2,13 @@
 
 import { Check, CreditCard, Crown, ExternalLink, LoaderCircle, ReceiptText, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { CUTFLOW_MONTHLY_PRICE_USD } from "@/lib/pricing";
 
 const plans = [
   {
     code: "pro",
     name: "Complete",
-    price: 69,
+    price: CUTFLOW_MONTHLY_PRICE_USD,
     features: [
       "Smart booking and deposits",
       "Client profiles and haircut memory",

@@ -1,0 +1,1 @@
+export const CUTFLOW_MONTHLY_PRICE_USD = 20;

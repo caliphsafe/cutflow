@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CUTFLOW_MONTHLY_PRICE_USD } from "@/lib/pricing";
 
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 
@@ -8,7 +9,7 @@ export function PricingComparison() {
   const [monthlySales, setMonthlySales] = useState(6000);
   const [commissionRate, setCommissionRate] = useState(10);
   const commissionCost = useMemo(() => monthlySales * commissionRate / 100, [commissionRate, monthlySales]);
-  const monthlyDifference = commissionCost - 69;
+  const monthlyDifference = commissionCost - CUTFLOW_MONTHLY_PRICE_USD;
   const annualDifference = monthlyDifference * 12;
 
   return <div className="pricing-calculator glass-card">
@@ -18,7 +19,7 @@ export function PricingComparison() {
     </div>
     <div className="calculator-results">
       <article><small>PERCENTAGE MODEL</small><strong>{money(commissionCost)}</strong><p>per month at {commissionRate}%</p></article>
-      <article className="cutflow-result"><small>CUTFLOW COMPLETE</small><strong>$69</strong><p>per month, regardless of appointment sales</p></article>
+      <article className="cutflow-result"><small>CUTFLOW COMPLETE</small><strong>${CUTFLOW_MONTHLY_PRICE_USD}</strong><p>per month, regardless of appointment sales</p></article>
       <article><small>DIFFERENCE</small><strong>{monthlyDifference >= 0 ? money(monthlyDifference) : `-${money(Math.abs(monthlyDifference))}`}</strong><p>{monthlyDifference >= 0 ? `${money(Math.max(0, annualDifference))} more over a year` : "The percentage example is lower at this sales level"}</p></article>
     </div>
     <p className="calculator-disclaimer">This is an illustrative booking-commission comparison, not a quote for another company. Normal card-processing fees are separate and still apply.</p>
