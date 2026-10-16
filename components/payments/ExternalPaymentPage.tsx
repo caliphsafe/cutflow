@@ -4,9 +4,10 @@ import { CalendarDays, CheckCircle2, Copy, ExternalLink, LoaderCircle, MapPin, S
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { money } from "@/lib/format";
+import { directPaymentLink } from "@/lib/payments/direct-payment-link";
 
 const providerCopy: Record<string, string> = {
-  cash_app: "Open Cash App, send the exact deposit to your barber, and include the booking reference in the payment note.",
+  cash_app: "Pay directly into your barber’s Cash App account. Include your booking code in the payment note so your deposit can be matched.",
   venmo: "Open Venmo, pay your barber’s Business Profile, and include the booking reference in the payment note.",
 };
 
@@ -46,6 +47,9 @@ type ExternalPaymentPageProps = {
 export function ExternalPaymentPage(props: ExternalPaymentPageProps) {
   const [confirmed, setConfirmed] = useState(props.initiallyConfirmed);
   const [copied, setCopied] = useState("");
+  const [copyError, setCopyError] = useState("");
+  const [manualCopy, setManualCopy] = useState(false);
+  const paymentLink = directPaymentLink(props);
 
   const checkPayment = useCallback(async () => {
     if (confirmed) return;
@@ -75,16 +79,25 @@ export function ExternalPaymentPage(props: ExternalPaymentPageProps) {
   }, [checkPayment, confirmed]);
 
   async function copy(value: string, label: string) {
-    if (!value) return;
-    await navigator.clipboard.writeText(value);
-    setCopied(label);
-    window.setTimeout(() => setCopied(""), 1600);
+    if (!value) return false;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      setCopyError("");
+      window.setTimeout(() => setCopied(""), 1600);
+      return true;
+    } catch {
+      setCopyError("Your browser couldn’t copy this automatically. Select and copy the value shown above.");
+      return false;
+    }
   }
 
   async function openPayment() {
-    await copy(props.bookingCode, "code");
-    const fallback = props.provider === "cash_app" ? "https://cash.app/send" : "https://venmo.com/";
-    window.location.href = props.paymentUrl || fallback;
+    if (await copy(props.bookingCode, "code")) {
+      window.location.href = paymentLink.url;
+    } else {
+      setManualCopy(true);
+    }
   }
 
   if (confirmed) {
@@ -109,6 +122,7 @@ export function ExternalPaymentPage(props: ExternalPaymentPageProps) {
           <span><b>{props.barberName} has been notified.</b><small>No customer confirmation email is required—this page is your live CutFlow confirmation.</small></span>
         </div>
 
+        {copyError && <p className="form-error" role="alert">{copyError}</p>}
         <div className="confirmation-actions">
           <Link className="button" href={`/manage/${props.token}`}>View appointment</Link>
           <button className="button secondary" onClick={() => copy(props.bookingCode, "confirmation-code")}><Copy /> {copied === "confirmation-code" ? "Copied" : "Copy booking reference"}</button>
@@ -126,7 +140,11 @@ export function ExternalPaymentPage(props: ExternalPaymentPageProps) {
     </div>
     <p className="external-note"><ShieldCheck/> Put <b>{props.bookingCode}</b> in the payment note. This is how CutFlow safely matches your payment to the correct appointment.</p>
     <button className="button external-pay-open" onClick={openPayment}>Copy booking code & open {props.label} <ExternalLink/></button>
-    <small className="external-open-hint">Your booking code is copied automatically. In {props.label}, enter {money(props.amountCents)}, paste the code into the payment note, and send.</small>
+    <small className="external-open-hint">{paymentLink.prefillsAmount
+      ? `We’ll open Cash App with the recipient and ${money(props.amountCents)} in the payment link, and copy your booking code. Check the recipient and amount, paste the code into the payment note, then tap Pay.`
+      : `Your booking code is copied automatically. In ${props.label}, enter ${money(props.amountCents)}, paste the code into the payment note, and send.`}</small>
+    {copyError && <p className="form-error" role="alert">{copyError}</p>}
+    {manualCopy && <a className="button secondary" href={paymentLink.url}>I copied the code · open {props.label} <ExternalLink/></a>}
     <div className="external-waiting"><LoaderCircle className="spin"/><span><b>Waiting for your payment</b><small>After you pay, return to this page. It will automatically change to your booking confirmation as soon as CutFlow matches the barber’s payment notice.</small></span></div>
     <p className="external-safety">Do not pay twice if confirmation is delayed. Your appointment stays pending until the deposit is matched, and your barber can verify it if needed.</p>
   </section></main>;
