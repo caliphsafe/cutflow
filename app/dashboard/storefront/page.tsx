@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Check, Copy, ExternalLink, Eye, Images, LoaderCircle, Palette, Save, Smartphone, Store, UploadCloud } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { money } from "@/lib/format";
+import { StorefrontIdentity } from "@/components/StorefrontIdentity";
+import { ServicePicker } from "@/components/ServicePicker";
 import type { Service } from "@/lib/types";
 import { SetupChecklist, type SetupStatus } from "@/components/SetupChecklist";
 import { HelpTip } from "@/components/HelpTip";
@@ -62,6 +63,7 @@ const emptySetup: SetupStatus = {
 
 export default function StorefrontPage() {
   const [copied, setCopied] = useState(false);
+  const [previewServiceId, setPreviewServiceId] = useState("");
   const [data, setData] = useState<StorefrontForm>(emptyForm);
   const [services, setServices] = useState<Service[]>([]);
   const [setup, setSetup] = useState<SetupStatus>(emptySetup);
@@ -146,7 +148,7 @@ export default function StorefrontPage() {
         </div>
 
         <div className="storefront-media-bridge">
-          <div>{data.profileImageUrl ? <img src={data.profileImageUrl} alt=""/> : <span><Images/></span>}<div><small>PHOTOS & MEDIA</small><b>{data.profileImageUrl && (data.coverImageUrl || data.shopImageUrl) ? "Customer photography ready" : "Add real barber and shop images"}</b><p>Manage the portrait, cover, shop, logo and gallery images used throughout the public page.</p></div></div>
+          <div>{data.profileImageUrl ? <img src={data.profileImageUrl} alt=""/> : <span><Images/></span>}<div><small>PHOTOS & MEDIA</small><b>{data.profileImageUrl || data.logoImageUrl ? "Storefront identity ready" : "Add a barber photo or brand logo"}</b><p>A barber photo or brand logo is required. Cover, shop and work gallery photos are optional.</p></div></div>
           <Link className="button secondary" href="/dashboard/media"><Images/> Manage photos</Link>
         </div>
         <div className="share-url"><div><small>{data.storefrontPublished ? "LIVE SHAREABLE LINK" : "PRIVATE OWNER PREVIEW"}</small><b>{typeof window === "undefined" ? "cutflow.app" : window.location.host}{sharePath}</b>{!data.storefrontPublished && <em>Preview links require the barber to be signed in and cannot be shared with customers.</em>}</div><button onClick={copy}>{copied ? <Check/> : <Copy/>}{copied ? "Copied" : data.storefrontPublished ? "Copy" : "Copy preview"}</button></div>
@@ -154,7 +156,11 @@ export default function StorefrontPage() {
 
       <aside className="storefront-phone-preview">
         <header><div><Smartphone/><span><small>MOBILE PREVIEW</small><b>Customer page</b></span></div><Link href={previewPath} target="_blank"><Eye/> Open preview</Link></header>
-        <div className="preview-phone"><div className="phone-island"/><div className="preview-phone-nav"><b>{data.shopName || data.displayName || "Your studio"}</b><span>•••</span></div><div className={data.coverImageUrl ? "preview-phone-hero has-image" : "preview-phone-hero"} style={{ "--preview-accent": data.accent, ...(data.coverImageUrl ? { backgroundImage: `linear-gradient(rgba(10,10,10,.48),rgba(10,10,10,.72)),url(${data.coverImageUrl})` } : {}) } as React.CSSProperties}>{data.profileImageUrl && <img className="preview-barber-avatar" src={data.profileImageUrl} alt=""/>}<small>{data.acceptingBookings ? "ACCEPTING BOOKINGS" : "BOOKING PAUSED"}</small><h2>{data.headline || "Your best cut starts with a clearer request."}</h2><p>{(data.bio || "Tell clients what makes your chair and service experience different.").slice(0, 120)}{data.bio.length > 120 ? "…" : ""}</p><button>{data.acceptingBookings ? "View availability →" : "View services"}</button></div><div className="preview-phone-services"><small>SERVICES</small>{services.filter((service) => service.active).slice(0, 3).map((service) => <div key={service.id}><span><b>{service.name}</b><small>{service.durationMinutes} min</small></span><strong>{money(service.priceCents)}</strong></div>)}</div></div>
+        <div className="preview-phone"><div className="phone-island"/><div className="preview-phone-nav"><b>{data.shopName || "Your studio"}</b><span>Book</span></div>
+          <StorefrontIdentity barber={data}/>
+          <div className="preview-booking-services"><small>SERVICE · STEP 1 OF 4</small><h3>Book your appointment.</h3><ServicePicker services={services} selectedId={previewServiceId} onSelect={setPreviewServiceId}/><Link className="button" href={`${previewPath}${previewServiceId ? `&service=${encodeURIComponent(previewServiceId)}` : ""}`} target="_blank">See available times</Link></div>
+          {data.galleryImageUrls.length > 0 && <div className="preview-work-gallery">{data.galleryImageUrls.slice(0, 3).map((url, index) => <img key={`${url}-${index}`} src={url} alt={`Work example ${index + 1}`} loading="lazy"/>)}</div>}
+        </div>
       </aside>
     </section>
 
